@@ -1,6 +1,8 @@
 # 📘 Module 04 — Machine Learning for Time Series
 
-> Frame time series as supervised learning problems and leverage the power of gradient boosting, random forests, and other ML algorithms — while respecting the temporal structure of data.
+> **Level**: 🟡 Intermediate | **Prerequisites**: [Module 02](../02_data_engineering/README.md) (feature engineering), [Module 03](../03_statistical_models/README.md) (statistical baselines)
+>
+> Tree-based ML models (XGBoost, LightGBM) consistently win time series Kaggle competitions. But applying them correctly requires time-safe cross-validation, leakage-free feature engineering, and careful hyperparameter tuning. This module covers it all.
 
 ---
 
@@ -8,73 +10,98 @@
 
 By the end of this module, you will be able to:
 
-- Reframe a time series forecasting task as a tabular regression problem
-- Engineer lag, rolling, and calendar features for tree-based models
-- Train and tune XGBoost and LightGBM models on time series data
-- Apply time-series-aware cross-validation (TimeSeriesSplit, walk-forward)
-- Avoid data leakage in feature construction and validation
-- Interpret feature importance for temporal predictions
-- Combine ML predictions with statistical residuals (hybrid models)
+- Explain when ML models outperform statistical models for time series
+- Implement walk-forward cross-validation correctly (no leakage)
+- Build production-grade XGBoost and LightGBM forecasting pipelines
+- Tune hyperparameters using Optuna with time-safe CV
+- Stack multiple models into an ensemble for improved accuracy
+- Compare all models on a fair leaderboard
 
 ---
 
 ## 🔗 Prerequisites
 
-- [Module 02 — Data Engineering](../02_data_engineering/README.md)
-- [Module 03 — Statistical Models](../03_statistical_models/README.md)
-- Familiarity with scikit-learn API
+- [Module 02 — Data Engineering](../02_data_engineering/README.md) — lag/rolling/Fourier features
+- [Module 03 — Statistical Models](../03_statistical_models/README.md) — seasonal naive baseline
+- scikit-learn, XGBoost, LightGBM basics
 
 ---
 
 ## 📂 Module Contents
 
-### Theory Notes
-| File | Topic |
-|------|-------|
-| `01_ml_framing_regression_approach.md` | Supervised learning framing, target variable, train/test design |
-| `02_feature_engineering_for_ml.md` | Lag features, rolling stats, calendar encodings, Fourier terms |
-| `03_xgboost_lightgbm_for_ts.md` | Tree-based models, hyperparameter tuning, early stopping for TS |
-| `04_random_forest_ts.md` | Random forest for forecasting, feature importance, limitations |
-| `05_cross_validation_for_ts.md` | TimeSeriesSplit, walk-forward validation, gap strategy |
-| `06_target_encoding_and_lags.md` | Target encoding, mean encoding, lag target leakage prevention |
+### 📒 Theory Notes
 
-### Code Practicals
+| File | Topic | Description |
+|------|-------|-------------|
+| [`01_ml_vs_statistical_models.md`](./01_ml_vs_statistical_models.md) | ML vs. Statistical | When ML wins, when ARIMA wins, hybrid strategies |
+| [`02_timeseries_crossvalidation.md`](./02_timeseries_crossvalidation.md) | Time Series CV | Walk-forward, expanding window, purged CV — the right way |
+| [`03_gradient_boosting_xgboost_lgbm.md`](./03_gradient_boosting_xgboost_lgbm.md) | XGBoost & LightGBM | Gradient boosting internals, TS-specific tuning, full pipeline |
+| [`04_random_forest_and_tree_models.md`](./04_random_forest_and_tree_models.md) | Random Forest & Trees | RF, ExtraTrees, feature importance for TS |
+| [`05_linear_models.md`](./05_linear_models.md) | Linear Models | Ridge, Lasso, ElasticNet, Bayesian Ridge — regularized regression for TS |
+| [`06_model_stacking_and_ensembles.md`](./06_model_stacking_and_ensembles.md) | Ensembles & Stacking | Blending, stacking, weighted averaging, ML + statistical hybrid |
+
+### 💻 Code Practicals
+
 | File | What It Demonstrates |
 |------|----------------------|
-| `code/01_ml_framing.py` | Converting TS to supervised dataset with lag matrix construction |
-| `code/02_xgboost_ts.py` | XGBoost training, Optuna tuning, multi-step forecasting |
-| `code/03_lightgbm_ts.py` | LightGBM with early stopping, SHAP feature importance |
-| `code/04_ts_cv.py` | TimeSeriesSplit, walk-forward CV, gap parameter, performance curves |
+| [`code/01_ts_crossvalidation.py`](./code/01_ts_crossvalidation.py) | Walk-forward CV, expanding window, TimeSeriesSplit visualization |
+| [`code/02_xgboost_lgbm_pipeline.py`](./code/02_xgboost_lgbm_pipeline.py) | Full XGBoost + LightGBM pipeline: features → fit → forecast → diagnostics |
+| [`code/03_hyperparameter_tuning.py`](./code/03_hyperparameter_tuning.py) | Optuna-based tuning for LightGBM with walk-forward CV objective |
+| [`code/04_model_comparison.py`](./code/04_model_comparison.py) | Full leaderboard: Linear → RF → XGBoost → LGBM → Ensemble vs. baselines |
 
 ---
 
-## 🧠 Key Concepts
+## 🗺️ Learning Path
 
-- **Supervised Framing** — Convert `[y(t), y(t-1), ..., y(t-p)]` into feature matrix `X` and target `y`.
-- **Lag Features** — Most important features for tree-based models; capture autocorrelation.
-- **Walk-Forward Validation** — Repeatedly train on past, predict next window; mimics production reality.
-- **Data Leakage** — Using rolling features without respecting the temporal split boundary.
-- **SHAP Values** — Model-agnostic feature attributions that explain which lags drive predictions.
+```
+01_ml_vs_statistical_models.md         ← Understand the landscape
+        ↓
+02_timeseries_crossvalidation.md        ← Master CV before anything else
+        ↓
+03_gradient_boosting_xgboost_lgbm.md   ← Core ML model family
+        ↓
+04_random_forest_and_tree_models.md
+        ↓
+05_linear_models.md
+        ↓
+06_model_stacking_and_ensembles.md
+        ↓
+code/01 → code/02 → code/03 → code/04
+```
 
 ---
 
-## 📌 Key Takeaways
+## ⚡ The ML for TS Golden Rules
 
-1. LightGBM/XGBoost are among the **most competitive** models in Kaggle TS competitions.
-2. Feature engineering matters more than model choice — lags and rolling windows dominate.
-3. **Never use standard k-fold CV** on time series — always use TimeSeriesSplit or walk-forward.
-4. Use a **hold-out gap** between train and validation to prevent look-ahead bias.
-5. Hybrid models (statistical for trend + ML for residuals) often outperform both individually.
+1. **Never use random K-Fold CV** — always use walk-forward / TimeSeriesSplit
+2. **Shift before rolling** — all rolling features must use `.shift(1).rolling(w)`
+3. **Encode on train only** — target encoding and normalization must fit on train set
+4. **Lag features are the most important features** — lag 1, lag 7, lag 28, lag 365
+5. **Beat seasonal naive first** — if XGBoost can't beat seasonal naive, the features are wrong
+
+---
+
+## 🧠 ML Model Family Overview
+
+| Model | Handles Non-linearity | Multi-step | External Regressors | Interpretability |
+|-------|----------------------|-----------|--------------------|--------------------|
+| Ridge / Lasso | ❌ | Via MIMO | ✅ | High |
+| Random Forest | ✅ | Via MIMO | ✅ | Medium (feature importance) |
+| **XGBoost** | ✅ | Via MIMO | ✅ | Medium (SHAP) |
+| **LightGBM** | ✅ | Via MIMO | ✅ | Medium (SHAP) |
+| CatBoost | ✅ | Via MIMO | ✅ | Medium (SHAP) |
+| Stacked Ensemble | ✅ | Via MIMO | ✅ | Low |
 
 ---
 
 ## 📖 Further Reading
 
-- [XGBoost Documentation](https://xgboost.readthedocs.io/en/stable/)
-- [LightGBM Documentation](https://lightgbm.readthedocs.io/en/stable/)
-- [Kaggle — M5 Forecasting Winners Write-up](https://www.kaggle.com/c/m5-forecasting-accuracy/discussion)
-- [Skforecast Library](https://skforecast.org/) — scikit-learn + TS forecasting
+- [XGBoost Documentation](https://xgboost.readthedocs.io/)
+- [LightGBM Documentation](https://lightgbm.readthedocs.io/)
+- [Optuna Documentation](https://optuna.readthedocs.io/)
+- [Forecasting with Gradient Boosting — Skforecast](https://skforecast.org/latest/)
+- [SHAP for Time Series Interpretation](https://shap.readthedocs.io/)
 
 ---
 
-*← [Module 03](../03_statistical_models/README.md) | Back to [Master README](../README.md) | Next: [Module 05](../05_deep_learning_models/README.md) →*
+*← [Module 03 — Statistical Models](../03_statistical_models/README.md) | Back to [Master README](../README.md) | Next: [Module 05 — Deep Learning](../05_deep_learning_models/README.md) →*

@@ -1,6 +1,8 @@
 # 📘 Module 05 — Deep Learning Models for Time Series
 
-> Dive into the architecture and intuition behind RNNs, LSTMs, TCNs, and modern architectures like N-BEATS and Temporal Fusion Transformer — the deep learning toolkit for time series.
+> **Level**: 🟠 Advanced | **Prerequisites**: [Module 02](../02_data_engineering/README.md) (windowing/features), [Module 04](../04_ml_for_time_series/README.md) (ML fundamentals), PyTorch basics
+>
+> Deep learning unlocks long-range dependency modeling, multi-variate attention, and probabilistic forecasting at scale. This module covers the full DL stack — RNN/LSTM, TCN, Seq2Seq, N-BEATS, and TFT — with working implementations.
 
 ---
 
@@ -8,80 +10,102 @@
 
 By the end of this module, you will be able to:
 
-- Understand RNN and LSTM architectures and their role in sequence modeling
-- Implement GRU as a lightweight alternative to LSTM
-- Build Seq2Seq encoder-decoder models for multi-step forecasting
-- Apply Temporal Convolutional Networks (TCN) as a parallelizable RNN alternative
-- Use N-BEATS and N-HiTS for interpretable neural forecasting
-- Implement Temporal Fusion Transformer (TFT) for multi-horizon, multi-variate forecasting
-- Understand PatchTST and TimesNet as modern patch-based architectures
+- Understand the vanishing gradient problem and why LSTM/GRU solve it
+- Build sliding-window `Dataset` classes for supervised DL forecasting
+- Implement TCN with dilated causal convolutions for long-range patterns
+- Design Seq2Seq encoder-decoder architectures with attention
+- Understand the N-BEATS doubly residual stacking architecture
+- Configure and train the Temporal Fusion Transformer (TFT)
+- Apply training best practices: gradient clipping, LR scheduling, early stopping
 
 ---
 
 ## 🔗 Prerequisites
 
-- [Module 03 — Statistical Models](../03_statistical_models/README.md)
-- [Module 04 — ML for Time Series](../04_ml_for_time_series/README.md)
-- Basic deep learning (backpropagation, PyTorch or Keras)
+- [Module 02 — Data Engineering](../02_data_engineering/README.md) — sliding window datasets
+- [Module 04 — ML for TS](../04_ml_for_time_series/README.md) — feature engineering, CV
+- Python: PyTorch, numpy; optional: neuralforecast, pytorch-forecasting
 
 ---
 
 ## 📂 Module Contents
 
-### Theory Notes
-| File | Topic |
-|------|-------|
-| `01_rnn_and_lstm_basics.md` | Vanishing gradients, LSTM gates (forget/input/output), hidden state |
-| `02_gru_architecture.md` | GRU vs LSTM, reset/update gates, when to prefer GRU |
-| `03_seq2seq_encoder_decoder.md` | Encoder-decoder framework, teacher forcing, attention mechanism |
-| `04_temporal_convolutional_networks.md` | Causal convolutions, dilated convolutions, residual blocks |
-| `05_nbeats_and_nhits.md` | Block architecture, basis expansion, interpretable decomposition |
-| `06_tft_temporal_fusion_transformer.md` | Variable selection, LSTM encoder, multi-head attention, quantile outputs |
-| `07_patchtst_timesnet.md` | Patch-based tokenization, channel independence vs mixing |
+### 📒 Theory Notes
 
-### Code Practicals
+| File | Topic | Description |
+|------|-------|-------------|
+| [`01_rnn_lstm_gru.md`](./01_rnn_lstm_gru.md) | RNN, LSTM, GRU | Vanishing gradient, LSTM gates, GRU simplification, implementation |
+| [`02_temporal_convolutional_networks.md`](./02_temporal_convolutional_networks.md) | TCN | Dilated causal convolutions, receptive field, WaveNet connection |
+| [`03_seq2seq_and_attention.md`](./03_seq2seq_and_attention.md) | Seq2Seq + Attention | Encoder-decoder, Bahdanau attention, multi-step forecasting |
+| [`04_nbeats_and_nhits.md`](./04_nbeats_and_nhits.md) | N-BEATS & N-HiTS | Doubly residual stacking, interpretable decomposition, N-HiTS hierarchy |
+| [`05_temporal_fusion_transformer.md`](./05_temporal_fusion_transformer.md) | TFT | Variable selection, LSTM encoder, multi-head attention, interpretability |
+| [`06_training_best_practices.md`](./06_training_best_practices.md) | Training Best Practices | Normalization, clipping, LR scheduling, early stopping, scaling |
+
+### 💻 Code Practicals
+
 | File | What It Demonstrates |
 |------|----------------------|
-| `code/01_lstm_forecasting.py` | LSTM forecasting in PyTorch with sliding window dataset |
-| `code/02_seq2seq_ts.py` | Encoder-decoder model with teacher forcing |
-| `code/03_tcn_ts.py` | TCN implementation with dilated causal convolutions |
-| `code/04_tft_demo.py` | TFT using PyTorch Forecasting / neuralforecast |
-| `code/05_nbeats_demo.py` | N-BEATS using neuralforecast with interpretable stacks |
+| [`code/01_lstm_gru_demo.py`](./code/01_lstm_gru_demo.py) | LSTM & GRU from scratch in PyTorch — sliding window, training loop, forecast |
+| [`code/02_tcn_demo.py`](./code/02_tcn_demo.py) | TCN with dilated causal convolutions — build, train, compare with LSTM |
+| [`code/03_nbeats_demo.py`](./code/03_nbeats_demo.py) | N-BEATS using neuralforecast — interpretable trend/seasonal decomposition |
+| [`code/04_tft_demo.py`](./code/04_tft_demo.py) | TFT using neuralforecast — covariates, attention weights, prediction intervals |
 
 ---
 
-## 🧠 Key Concepts
+## 🗺️ Learning Path
 
-| Architecture | Key Idea | Best For |
-|-------------|----------|----------|
-| **LSTM** | Gated recurrent unit with memory cell | Medium-length sequences, univariate |
-| **GRU** | Simplified LSTM with fewer parameters | Faster training, similar performance |
-| **Seq2Seq** | Encoder compresses history, decoder predicts future | Multi-step forecasting |
-| **TCN** | Dilated causal convolutions, fully parallelizable | Long sequences, fast training |
-| **N-BEATS** | Pure MLP with doubly residual stacks | Interpretable, univariate |
-| **TFT** | Attention + LSTM + gating + variable selection | Multi-variate, multi-horizon |
-| **PatchTST** | Patches as tokens for Transformer | Long-term forecasting |
+```
+01_rnn_lstm_gru.md              ← Sequential foundations
+        ↓
+02_temporal_convolutional_networks.md
+        ↓
+03_seq2seq_and_attention.md
+        ↓
+04_nbeats_and_nhits.md          ← Modern pure-DL forecasters
+        ↓
+05_temporal_fusion_transformer.md  ← State-of-the-art
+        ↓
+06_training_best_practices.md
+        ↓
+code/01 → 02 → 03 → 04
+```
 
 ---
 
-## 📌 Key Takeaways
+## 🧠 DL Model Architecture Overview
 
-1. **LSTMs** are still competitive but often beaten by simpler TCNs or MLPs on tabular TS.
-2. **TFT** is the go-to architecture for production multi-variate forecasting with covariates.
-3. **N-BEATS** is the gold standard for pure univariate forecasting benchmarks.
-4. TCNs train faster than RNNs due to parallelism — prefer them for large datasets.
-5. Use `neuralforecast` or `darts` for production-grade, well-tested DL model implementations.
+| Model | Temporal Mechanism | Multi-step | Interpretable | Covariates | Best For |
+|-------|-------------------|-----------|--------------|-----------|---------|
+| **LSTM** | Hidden state (recurrent) | Via Seq2Seq | ❌ | ✅ | Short-to-medium sequences |
+| **GRU** | Hidden state (recurrent) | Via Seq2Seq | ❌ | ✅ | Faster LSTM alternative |
+| **TCN** | Dilated causal conv | Direct | ❌ | ✅ | Long-range parallel training |
+| **Seq2Seq** | LSTM + decoder | Native | ❌ | ✅ | Multi-step structured forecast |
+| **N-BEATS** | FC blocks + residuals | Native | ✅ (generic) | ❌ | Pure univariate, interpretable |
+| **N-HiTS** | Multi-rate sampling | Native | ✅ | ❌ | Long-horizon efficiency |
+| **TFT** | LSTM + Multi-head attn | Native | ✅ | ✅ | Production, covariates, intervals |
+
+---
+
+## 📦 Required Libraries
+
+```bash
+pip install torch torchvision torchaudio          # PyTorch
+pip install neuralforecast                        # N-BEATS, N-HiTS, TFT (high-level)
+pip install pytorch-forecasting                   # TFT (detailed)
+pip install lightning                             # PyTorch Lightning (training)
+pip install matplotlib seaborn pandas numpy
+```
 
 ---
 
 ## 📖 Further Reading
 
-- [N-BEATS Paper (Oreshkin et al., 2020)](https://arxiv.org/abs/1905.10437)
-- [TFT Paper (Lim et al., 2021)](https://arxiv.org/abs/1912.09363)
-- [PatchTST Paper (Nie et al., 2023)](https://arxiv.org/abs/2211.14730)
-- [neuralforecast Library](https://nixtlaverse.nixtla.io/neuralforecast/)
-- [PyTorch Forecasting](https://pytorch-forecasting.readthedocs.io/en/stable/)
+- [Hochreiter & Schmidhuber (1997) — Long Short-Term Memory](https://www.bioinf.jku.at/publications/older/2604.pdf)
+- [Bai et al. (2018) — TCN: An Empirical Evaluation of Generic Convolutional Networks for Sequence Modeling](https://arxiv.org/abs/1803.01271)
+- [Oreshkin et al. (2020) — N-BEATS: Neural Basis Expansion Analysis for Interpretable Time Series Forecasting](https://arxiv.org/abs/1905.10437)
+- [Lim et al. (2021) — Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting](https://arxiv.org/abs/1912.09363)
+- [Neuralforecast Documentation](https://nixtlaverse.nixtla.io/neuralforecast/)
 
 ---
 
-*← [Module 04](../04_ml_for_time_series/README.md) | Back to [Master README](../README.md) | Next: [Module 06](../06_transformer_and_foundation_models/README.md) →*
+*← [Module 04 — ML for TS](../04_ml_for_time_series/README.md) | Back to [Master README](../README.md) | Next: [Module 06 — Transformers & Foundation Models](../06_transformer_and_foundation_models/README.md) →*
