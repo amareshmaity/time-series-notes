@@ -35,11 +35,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 np.random.seed(42)
 n = 2000   # longer series to test TCN's long-range advantage
-t = np.arange(n)
+ts_t = np.arange(n)   # named ts_t to avoid shadowing the imported `time` module
 series = (
-    50 + 0.05*t
-    + 25*np.sin(2*np.pi*t/365.25)
-    + 12*np.sin(2*np.pi*t/7)
+    50 + 0.05*ts_t
+    + 25*np.sin(2*np.pi*ts_t/365.25)
+    + 12*np.sin(2*np.pi*ts_t/7)
     + np.random.normal(0, 4, n)
 ).astype(np.float32)
 
@@ -240,7 +240,7 @@ axes[1].legend()
 
 plt.suptitle("Temporal Convolutional Network vs. LSTM", fontweight="bold")
 plt.tight_layout()
-plt.savefig("01_tcn_vs_lstm.png", bbox_inches="tight")
+plt.savefig("02_tcn_vs_lstm.png", bbox_inches="tight")
 plt.show()
 
 print("\n✅ TCN demo complete.")

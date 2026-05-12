@@ -12,8 +12,9 @@ By the end of this module, you will be able to:
 
 - Explain when ML models outperform statistical models for time series
 - Implement walk-forward cross-validation correctly (no leakage)
-- Build production-grade XGBoost and LightGBM forecasting pipelines
+- Build production-grade XGBoost, LightGBM, and CatBoost forecasting pipelines
 - Tune hyperparameters using Optuna with time-safe CV
+- Generate distribution-free prediction intervals using Conformal Prediction
 - Stack multiple models into an ensemble for improved accuracy
 - Compare all models on a fair leaderboard
 
@@ -35,9 +36,9 @@ By the end of this module, you will be able to:
 |------|-------|-------------|
 | [`01_ml_vs_statistical_models.md`](./01_ml_vs_statistical_models.md) | ML vs. Statistical | When ML wins, when ARIMA wins, hybrid strategies |
 | [`02_timeseries_crossvalidation.md`](./02_timeseries_crossvalidation.md) | Time Series CV | Walk-forward, expanding window, purged CV — the right way |
-| [`03_gradient_boosting_xgboost_lgbm.md`](./03_gradient_boosting_xgboost_lgbm.md) | XGBoost & LightGBM | Gradient boosting internals, TS-specific tuning, full pipeline |
+| [`03_gradient_boosting_xgboost_lgbm.md`](./03_gradient_boosting_xgboost_lgbm.md) | XGBoost, LightGBM & CatBoost | Gradient boosting internals, CatBoost ordered boosting, TS-specific tuning |
 | [`04_random_forest_and_tree_models.md`](./04_random_forest_and_tree_models.md) | Random Forest & Trees | RF, ExtraTrees, feature importance for TS |
-| [`05_linear_models.md`](./05_linear_models.md) | Linear Models | Ridge, Lasso, ElasticNet, Bayesian Ridge — regularized regression for TS |
+| [`05_linear_models.md`](./05_linear_models.md) | Linear Models + Conformal PI | Ridge, Lasso, ElasticNet, Bayesian Ridge, conformal prediction intervals |
 | [`06_model_stacking_and_ensembles.md`](./06_model_stacking_and_ensembles.md) | Ensembles & Stacking | Blending, stacking, weighted averaging, ML + statistical hybrid |
 
 ### 💻 Code Practicals
@@ -78,6 +79,8 @@ code/01 → code/02 → code/03 → code/04
 3. **Encode on train only** — target encoding and normalization must fit on train set
 4. **Lag features are the most important features** — lag 1, lag 7, lag 28, lag 365
 5. **Beat seasonal naive first** — if XGBoost can't beat seasonal naive, the features are wrong
+6. **CatBoost ordered boosting** is the only gradient boosting that natively respects temporal order during training
+7. **Conformal prediction** gives valid prediction intervals for any ML model without distributional assumptions
 
 ---
 
@@ -89,7 +92,7 @@ code/01 → code/02 → code/03 → code/04
 | Random Forest | ✅ | Via MIMO | ✅ | Medium (feature importance) |
 | **XGBoost** | ✅ | Via MIMO | ✅ | Medium (SHAP) |
 | **LightGBM** | ✅ | Via MIMO | ✅ | Medium (SHAP) |
-| CatBoost | ✅ | Via MIMO | ✅ | Medium (SHAP) |
+| **CatBoost** | ✅ | Via MIMO | ✅ | Medium (SHAP, ordered boosting) |
 | Stacked Ensemble | ✅ | Via MIMO | ✅ | Low |
 
 ---

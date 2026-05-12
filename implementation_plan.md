@@ -12,6 +12,7 @@ Build a comprehensive, industry-standard time series curriculum for an AI Engine
 time-series-notes/
 │
 ├── README.md                          ← Master index
+├── requirements.txt                   ← Reproducible environment setup
 │
 ├── 01_foundations/
 │   ├── README.md
@@ -43,15 +44,19 @@ time-series-notes/
 │   ├── 01_naive_baseline_models.md
 │   ├── 02_exponential_smoothing_ETS.md
 │   ├── 03_ar_ma_arma_arima_sarima.md          ← AR, MA, ARMA, ARIMA, SARIMA — full family
-│   ├── 04_var_vector_autoregression.md
-│   ├── 05_state_space_models.md
-│   ├── 06_model_selection_and_diagnostics.md
+│   ├── 04_arimax_sarimax_exogenous.md         ← Exogenous variables, ARIMAX, SARIMAX
+│   ├── 05_var_vector_autoregression.md
+│   ├── 06_state_space_kalman_filters.md       ← State space models + Kalman filter deep dive
+│   ├── 07_prophet.md                          ← Meta's Prophet: changepoints, seasonality, holidays
+│   ├── 08_model_selection_and_diagnostics.md
 │   └── code/
 │       ├── 01_naive_models.py
 │       ├── 02_ets_models.py
 │       ├── 03_ar_ma_arma_arima_sarima.py       ← Practicals: AR → MA → ARMA → ARIMA → SARIMA
-│       ├── 04_var_models.py
-│       └── 05_diagnostics.py
+│       ├── 04_arimax_sarimax.py
+│       ├── 05_var_models.py
+│       ├── 06_prophet_demo.py
+│       └── 07_diagnostics.py
 │
 ├── 04_ml_for_time_series/
 │   ├── README.md
@@ -75,7 +80,7 @@ time-series-notes/
 │   ├── 04_temporal_convolutional_networks.md
 │   ├── 05_nbeats_and_nhits.md
 │   ├── 06_tft_temporal_fusion_transformer.md
-│   ├── 07_patchtst_timesnet.md
+│   ├── 07_data_augmentation_for_ts.md         ← Jittering, window warping, synthetic augmentation
 │   └── code/
 │       ├── 01_lstm_forecasting.py
 │       ├── 02_seq2seq_ts.py
@@ -87,14 +92,16 @@ time-series-notes/
 │   ├── README.md
 │   ├── 01_attention_for_ts.md
 │   ├── 02_informer_autoformer_fedformer.md
-│   ├── 03_timegpt_and_lag_llama.md
-│   ├── 04_moirai_chronos_foundation_models.md
-│   ├── 05_zero_shot_forecasting.md
-│   ├── 06_fine_tuning_ts_llms.md
+│   ├── 03_patchtst_timesnet.md               ← PatchTST & TimesNet — patch-based transformers
+│   ├── 04_timegpt_and_lag_llama.md
+│   ├── 05_moirai_chronos_foundation_models.md
+│   ├── 06_zero_shot_forecasting.md
+│   ├── 07_fine_tuning_ts_llms.md
 │   └── code/
 │       ├── 01_informer_demo.py
 │       ├── 02_chronos_inference.py
-│       └── 03_zero_shot_example.py
+│       ├── 03_patchtst_demo.py
+│       └── 04_zero_shot_example.py
 │
 ├── 07_forecasting_strategies/
 │   ├── README.md
@@ -114,12 +121,15 @@ time-series-notes/
 │   ├── 01_error_metrics_MAE_RMSE_MAPE.md
 │   ├── 02_skill_scores_and_relative_metrics.md
 │   ├── 03_backtesting_design.md
-│   ├── 04_model_comparison_and_statistical_tests.md
-│   ├── 05_calibration_for_probabilistic_models.md
+│   ├── 04_residual_diagnostics.md             ← Ljung-Box, DW test, ACF of residuals
+│   ├── 05_model_comparison_and_statistical_tests.md
+│   ├── 06_calibration_for_probabilistic_models.md
+│   ├── 07_crps_and_distributional_accuracy.md ← CRPS, pinball loss, WIS for probabilistic models
 │   └── code/
 │       ├── 01_metrics_implementation.py
 │       ├── 02_backtesting_pipeline.py
-│       └── 03_statistical_tests.py
+│       ├── 03_statistical_tests.py
+│       └── 04_crps_calibration.py
 │
 ├── 09_anomaly_detection/
 │   ├── README.md
@@ -164,14 +174,16 @@ time-series-notes/
 │   ├── README.md
 │   ├── 01_multivariate_ts_overview.md
 │   ├── 02_granger_causality.md
-│   ├── 03_dynamic_time_warping_advanced.md
-│   ├── 04_graph_neural_networks_for_ts.md
-│   ├── 05_diffusion_models_for_ts.md
-│   ├── 06_synthetic_ts_generation.md
+│   ├── 03_causal_discovery_pcmci.md           ← PCMCI, PC algorithm, causal structure learning
+│   ├── 04_dynamic_time_warping_advanced.md
+│   ├── 05_graph_neural_networks_for_ts.md
+│   ├── 06_diffusion_models_for_ts.md
+│   ├── 07_synthetic_ts_generation.md
 │   └── code/
 │       ├── 01_granger_causality.py
-│       ├── 02_gnn_ts.py
-│       └── 03_ts_generation.py
+│       ├── 02_causal_discovery.py
+│       ├── 03_gnn_ts.py
+│       └── 04_ts_generation.py
 │
 └── 13_projects_and_case_studies/
     ├── README.md
@@ -194,17 +206,17 @@ time-series-notes/
 |---|--------|-------|
 | 01 | Foundations | Core concepts, stationarity, ACF/PACF, decomposition |
 | 02 | Data Engineering | Preprocessing, missing values, feature engineering |
-| 03 | Statistical Models | AR, MA, ARMA, ARIMA, SARIMA, ETS, VAR, State Space |
-| 04 | ML for Time Series | XGBoost, LightGBM, CV strategies |
-| 05 | Deep Learning | LSTM, TCN, TFT, N-BEATS |
-| 06 | Transformers & Foundation Models | Informer, Chronos, TimeGPT, zero-shot |
-| 07 | Forecasting Strategies | Hierarchical, probabilistic, MIMO |
-| 08 | Evaluation & Metrics | MAE/RMSE/MAPE, backtesting, statistical tests |
-| 09 | Anomaly Detection | Statistical, autoencoder, online, RCA |
-| 10 | Classification & Clustering | DTW, ROCKET, deep learning classifiers |
-| 11 | Production & MLOps | Pipelines, drift detection, serving, retraining |
-| 12 | Multivariate & Advanced | Causality, GNNs, diffusion models, synthesis |
-| 13 | Projects & Case Studies | End-to-end applied projects |
+| 03 | Statistical Models | AR, ARIMA, SARIMA, ARIMAX, ETS, VAR, Kalman, Prophet |
+| 04 | ML for Time Series | XGBoost, LightGBM, lag features, CV strategies |
+| 05 | Deep Learning | LSTM, TCN, Seq2Seq, N-BEATS, TFT, data augmentation |
+| 06 | Transformers & Foundation Models | Informer, PatchTST, Chronos, TimeGPT, zero-shot, fine-tuning |
+| 07 | Forecasting Strategies | Hierarchical, probabilistic, MIMO, conformal prediction |
+| 08 | Evaluation & Metrics | MAE/RMSE/MAPE, residual diagnostics, CRPS, backtesting |
+| 09 | Anomaly Detection | Statistical, Isolation Forest, autoencoder, LSTM-AD, online |
+| 10 | Classification & Clustering | DTW, ROCKET, deep classifiers, TS clustering |
+| 11 | Production & MLOps | Pipelines, feature stores, drift detection, serving, retraining |
+| 12 | Multivariate & Advanced | Granger, PCMCI causal discovery, GNNs, diffusion, synthesis |
+| 13 | Projects & Case Studies | Stock, energy, retail, sensor anomaly — end-to-end |
 
 ---
 

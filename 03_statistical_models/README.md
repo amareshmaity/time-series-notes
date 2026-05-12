@@ -14,7 +14,9 @@ By the end of this module, you will be able to:
 - Fit ETS (Exponential Smoothing) models for trend and seasonal series
 - Understand the AR → MA → ARMA → ARIMA → SARIMA model family from first principles
 - Use the Box-Jenkins methodology to identify, estimate, and diagnose ARIMA models
+- Add exogenous regressors to SARIMA using SARIMAX (promotions, weather, events)
 - Fit Vector Autoregression (VAR) models for multivariate time series
+- Test for cointegration and fit VECM when cointegration is present
 - Understand Kalman filter-based State Space models
 - Select the best model using AIC/BIC and residual diagnostics
 
@@ -36,10 +38,10 @@ By the end of this module, you will be able to:
 |------|-------|-------------|
 | [`01_naive_baseline_models.md`](./01_naive_baseline_models.md) | Naive Baselines | Mean, drift, naïve, seasonal naïve — always the first benchmark |
 | [`02_exponential_smoothing_ETS.md`](./02_exponential_smoothing_ETS.md) | ETS Models | SES, Holt's linear, Holt-Winters, full ETS state space framework |
-| [`03_ar_ma_arma_arima_sarima.md`](./03_ar_ma_arma_arima_sarima.md) | AR → SARIMA Family | Full model family with math, intuition, Box-Jenkins methodology |
-| [`04_var_vector_autoregression.md`](./04_var_vector_autoregression.md) | VAR Models | Multivariate AR, lag selection, Granger causality, IRF |
+| [`03_ar_ma_arma_arima_sarima.md`](./03_ar_ma_arma_arima_sarima.md) | AR → SARIMA + ARIMAX | Full model family with math, intuition, Box-Jenkins, SARIMAX with regressors |
+| [`04_var_vector_autoregression.md`](./04_var_vector_autoregression.md) | VAR + VECM | Multivariate AR, Granger causality, IRF, cointegration, VECM |
 | [`05_state_space_models.md`](./05_state_space_models.md) | State Space Models | Local level, Kalman filter, structural TS models |
-| [`06_model_selection_and_diagnostics.md`](./06_model_selection_and_diagnostics.md) | Model Selection | AIC/BIC, residual analysis, Ljung-Box, forecast diagnostics |
+| [`06_model_selection_and_diagnostics.md`](./06_model_selection_and_diagnostics.md) | Model Selection | AIC/BIC, residual analysis, Ljung-Box, walk-forward, Diebold-Mariano |
 
 ### 💻 Code Practicals
 
@@ -84,7 +86,9 @@ code/ (run in order 01 → 05)
 | ARMA(p,q) | Univariate | ❌ | ❌ | Stationary, AR + MA combined |
 | ARIMA(p,d,q) | Univariate | ❌ | ❌ | Non-stationary (d differences) |
 | SARIMA(p,d,q)(P,D,Q,s) | Univariate | ✅ | ❌ | Non-stationary + seasonal |
+| ARIMAX / SARIMAX | Univariate | ✅ | ❌ (exog vars) | SARIMA + known external regressors |
 | VAR(p) | Multivariate | ❌ | ✅ | Stationary, linear cross-series |
+| VECM | Multivariate | ❌ | ✅ | Cointegrated I(1) series |
 | State Space | Univariate | ✅ | ✅ | Latent state evolution |
 
 ---
@@ -95,8 +99,10 @@ code/ (run in order 01 → 05)
 2. **ETS often outperforms ARIMA** in practice due to robust automatic parameter selection
 3. **AR order p** → read from PACF; **MA order q** → read from ACF
 4. **SARIMA** is the industry-standard model for seasonal univariate production forecasting
-5. **Residuals must be white noise** — always validate with Ljung-Box before trusting a model
-6. **AIC selects model complexity**; use BIC when parsimony is preferred
+5. Use **SARIMAX** when external predictors (promotions, weather) are available and their future values are known
+6. **Residuals must be white noise** — always validate with Ljung-Box before trusting a model
+7. **AIC selects model complexity**; use BIC when parsimony is preferred
+8. For multivariate I(1) series: test for **cointegration** first; if cointegrated, use **VECM**, not VAR on differences
 
 ---
 

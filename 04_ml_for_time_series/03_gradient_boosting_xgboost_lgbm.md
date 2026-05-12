@@ -11,11 +11,12 @@
 1. [Gradient Boosting Intuition](#1-gradient-boosting-intuition)
 2. [XGBoost for Time Series](#2-xgboost-for-time-series)
 3. [LightGBM for Time Series](#3-lightgbm-for-time-series)
-4. [XGBoost vs. LightGBM](#4-xgboost-vs-lightgbm)
-5. [Key Hyperparameters for TS](#5-key-hyperparameters-for-ts)
-6. [Multi-Step Forecasting Strategies](#6-multi-step-forecasting-strategies)
-7. [SHAP — Interpreting Feature Importance](#7-shap--interpreting-feature-importance)
-8. [Production Pipeline](#8-production-pipeline)
+4. [CatBoost for Time Series](#4-catboost-for-time-series)
+5. [XGBoost vs. LightGBM vs. CatBoost](#5-xgboost-vs-lightgbm-vs-catboost)
+6. [Key Hyperparameters for TS](#6-key-hyperparameters-for-ts)
+7. [Multi-Step Forecasting Strategies](#7-multi-step-forecasting-strategies)
+8. [SHAP — Interpreting Feature Importance](#8-shap--interpreting-feature-importance)
+9. [Production Pipeline](#9-production-pipeline)
 
 ---
 
@@ -217,25 +218,131 @@ model_lgbm.fit(
 
 ---
 
-## 4. XGBoost vs. LightGBM
+## 4. CatBoost for Time Series
 
-| Aspect | XGBoost | LightGBM |
-|--------|---------|----------|
-| **Speed** | Slower | Much faster (3-10×) |
-| **Memory** | More | Less |
-| **Large datasets** | Good | Better |
-| **Overfitting** | Level-wise = less overfitting | Leaf-wise = more overfitting risk |
-| **Tuning** | `max_depth` primary | `num_leaves` primary |
-| **Competition results** | Strong | Slightly edge in TS competitions |
-| **Categorical support** | Manual encoding | Native |
+**CatBoost** (Categorical Boosting) is a gradient boosting library from Yandex with key differentiators for time series:
+- **Native ordered boosting**: prevents target leakage during training (critical for TS)
+- **Native categorical support**: no label encoding or one-hot needed
+- **Symmetric (oblivious) trees**: same split condition at each level → faster inference, less overfitting
 
-**Rule of thumb**: Start with LightGBM for speed. Validate with XGBoost for comparison. If dataset < 50K rows, both are fast enough.
+### 4.1 CatBoost Advantages for TS
+
+| Feature | Details |
+|---------|---------|
+| **Ordered boosting** | Uses only past samples when building each tree — mimics temporal order |
+| **Symmetric trees** | Uniform depth → more regular predictions, less variance |
+| **Native categoricals** | Pass `cat_features` directly — CatBoost computes target statistics internally |
+| **GPU training** | Fast out-of-the-box on GPU |
+| **No tuning needed** | Strong defaults — often competitive without hyperparameter search |
+
+### 4.2 Installation
+
+```bash
+pip install catboost
+```
+
+### 4.3 Implementation
+
+```python
+from catboost import CatBoostRegressor, Pool
+import numpy as np
+
+# Identify categorical columns
+categorical_cols = ["store_id", "category", "day_of_week"]
+
+# CatBoost Pool: handles categoricals and missing values
+train_pool = Pool(
+    data=X_train,
+    label=y_train,
+    cat_features=categorical_cols,
+)
+val_pool = Pool(
+    data=X_test,
+    label=y_test,
+    cat_features=categorical_cols,
+)
+
+model_cb = CatBoostRegressor(
+    iterations=1000,          # number of trees
+    learning_rate=0.05,
+    depth=6,                  # symmetric tree depth (3–8)
+    l2_leaf_reg=3.0,          # L2 regularization on leaf values
+    min_data_in_leaf=20,      # min samples per leaf
+    subsample=0.8,            # row subsampling
+    colsample_bylevel=0.8,    # feature subsampling per tree level
+    loss_function="RMSE",     # or "MAE", "Quantile:alpha=0.5"
+    eval_metric="RMSE",
+    random_seed=42,
+    verbose=100,
+)
+
+model_cb.fit(
+    train_pool,
+    eval_set=val_pool,
+    early_stopping_rounds=50,
+    use_best_model=True,
+)
+
+print(f"Best iteration: {model_cb.best_iteration_}")
+print(f"Best RMSE:      {model_cb.best_score_['validation']['RMSE']:.4f}")
+
+y_pred_cb = model_cb.predict(X_test)
+```
+
+### 4.4 CatBoost-Specific TS Tips
+
+```python
+# Ordered boosting mode (prevent target leakage during training)
+# This is the DEFAULT in CatBoost — it respects sample order
+model_cb_ordered = CatBoostRegressor(
+    iterations=500,
+    boosting_type="Ordered",   # or "Plain" for standard boosting
+    depth=5,
+    learning_rate=0.05,
+    loss_function="RMSE",
+    verbose=False,
+)
+
+# Quantile regression (probabilistic forecasting)
+model_cb_q50 = CatBoostRegressor(
+    iterations=500,
+    loss_function="Quantile:alpha=0.5",  # median
+    verbose=False,
+)
+model_cb_q10 = CatBoostRegressor(
+    iterations=500,
+    loss_function="Quantile:alpha=0.1",  # 10th percentile
+    verbose=False,
+)
+model_cb_q90 = CatBoostRegressor(
+    iterations=500,
+    loss_function="Quantile:alpha=0.9",  # 90th percentile
+    verbose=False,
+)
+```
 
 ---
 
-## 5. Key Hyperparameters for TS
+## 5. XGBoost vs. LightGBM vs. CatBoost
 
-### 5.1 LightGBM TS-Tuned Starting Point
+| Aspect | XGBoost | LightGBM | CatBoost |
+|--------|---------|----------|---------|
+| **Speed** | Slower | Fastest | Fast (GPU) |
+| **Memory** | More | Least | Moderate |
+| **Overfitting** | Level-wise = lower | Leaf-wise = higher risk | Symmetric = lower |
+| **Tuning** | `max_depth` primary | `num_leaves` primary | `depth` primary |
+| **Categorical support** | Manual encoding | Native | Native (ordered TS) |
+| **Ordered boosting** | ❌ | ❌ | ✅ (built-in, TS-safe) |
+| **Prediction intervals** | Via quantile loss | Via quantile loss | Via Quantile loss |
+| **Competition results** | Strong | Slightly edge in TS | Strong for cat-heavy data |
+
+**Rule of thumb**: Start with LightGBM for speed. Use CatBoost when you have many categorical features or want ordered boosting. Validate with XGBoost for comparison.
+
+---
+
+## 6. Key Hyperparameters for TS
+
+### 6.1 LightGBM TS-Tuned Starting Point
 
 ```python
 lgb_params_ts = {
@@ -262,7 +369,7 @@ lgb_params_ts = {
 }
 ```
 
-### 5.2 XGBoost TS-Tuned Starting Point
+### 6.2 XGBoost TS-Tuned Starting Point
 
 ```python
 xgb_params_ts = {
@@ -283,9 +390,9 @@ xgb_params_ts = {
 
 ---
 
-## 6. Multi-Step Forecasting Strategies
+## 7. Multi-Step Forecasting Strategies
 
-### 6.1 Recursive (RMSN) Strategy
+### 7.1 Recursive (RMSN) Strategy
 
 Forecast one step at a time, feeding predictions back as lag features:
 
@@ -311,7 +418,7 @@ def recursive_forecast(model, X_last: pd.Series, h: int, feature_names: list) ->
 **Pros**: Single model, simplest approach  
 **Cons**: Errors accumulate — each step's error is an input to the next
 
-### 6.2 Direct (MIMO) Strategy
+### 7.2 Direct (MIMO) Strategy
 
 Train a **separate model for each horizon**:
 
@@ -339,7 +446,7 @@ final_forecast = np.array([direct_models[h].predict(X_test.iloc[-1:]) for h in r
 **Pros**: No error accumulation; each model optimized for its horizon  
 **Cons**: Need M models; features at future horizons must not use future values of target
 
-### 6.3 MIMO (Multi-Output)
+### 7.3 MIMO (Multi-Output)
 
 Single model predicts all `h` steps simultaneously using a multi-output regressor:
 
@@ -357,7 +464,7 @@ forecast_12step = multi_model.predict(X_mimo.iloc[-1:]).flatten()
 
 ---
 
-## 7. SHAP — Interpreting Feature Importance
+## 8. SHAP — Interpreting Feature Importance
 
 ### 7.1 Why SHAP Over Standard Feature Importance?
 
@@ -405,7 +512,7 @@ shap.waterfall_plot(
 
 ---
 
-## 8. Production Pipeline
+## 9. Production Pipeline
 
 ```python
 import lightgbm as lgb

@@ -228,9 +228,51 @@ scheduler_sgdr = CosineAnnealingWarmRestarts(
 ### 4.2 Training Loop with Scheduler
 
 ```python
+import torch
+
+def train_epoch(
+    model: nn.Module,
+    loader: DataLoader,
+    criterion,
+    optimizer,
+    max_norm: float = 1.0,
+    device: str = "cpu",
+) -> float:
+    """Run one full training epoch. Returns mean loss."""
+    model.train()
+    total_loss = 0.0
+    for X_b, y_b in loader:
+        X_b, y_b = X_b.to(device), y_b.to(device)
+        optimizer.zero_grad()
+        loss = criterion(model(X_b), y_b)
+        loss.backward()
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+        optimizer.step()
+        total_loss += loss.item()
+    return total_loss / len(loader)
+
+
+def evaluate(
+    model: nn.Module,
+    loader: DataLoader,
+    criterion,
+    device: str = "cpu",
+) -> float:
+    """Evaluate model on a DataLoader. Returns mean loss."""
+    model.eval()
+    total_loss = 0.0
+    with torch.no_grad():
+        for X_b, y_b in loader:
+            X_b, y_b = X_b.to(device), y_b.to(device)
+            total_loss += criterion(model(X_b), y_b).item()
+    return total_loss / len(loader)
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 for epoch in range(n_epochs):
-    train_loss = train_epoch(model, train_dl, criterion, optimizer)
-    val_loss   = evaluate(model, val_dl, criterion)
+    train_loss = train_epoch(model, train_dl, criterion, optimizer, device=device)
+    val_loss   = evaluate(model, val_dl, criterion, device=device)
 
     # CosineAnnealingLR: step per epoch
     scheduler_cosine.step()

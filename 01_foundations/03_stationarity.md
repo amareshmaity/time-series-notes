@@ -13,10 +13,11 @@
 3. [Visual Diagnosis](#3-visual-diagnosis)
 4. [ADF Test](#4-augmented-dickey-fuller-adf-test)
 5. [KPSS Test](#5-kpss-test)
-6. [ADF + KPSS Combined Decision](#6-adf--kpss-combined-decision)
-7. [Making a Series Stationary](#7-making-a-series-stationary)
-8. [Integration Order d](#8-integration-order-d)
-9. [Practical Checklist](#9-practical-checklist)
+6. [Phillips-Perron & Zivot-Andrews Tests](#6-phillips-perron--zivot-andrews-tests)
+7. [ADF + KPSS Combined Decision](#7-adf--kpss-combined-decision)
+8. [Making a Series Stationary](#8-making-a-series-stationary)
+9. [Integration Order d](#9-integration-order-d)
+10. [Practical Checklist](#10-practical-checklist)
 
 ---
 
@@ -237,7 +238,79 @@ else:
 
 ---
 
-## 6. ADF + KPSS Combined Decision
+## 6. Phillips-Perron & Zivot-Andrews Tests
+
+### 6.1 Phillips-Perron (PP) Test
+
+The **PP test** is an alternative to ADF that is **robust to serial correlation and heteroskedasticity** in the errors — it uses a non-parametric correction instead of adding lagged differences.
+
+```
+H₀ (Null):      Unit root present → Series is NON-STATIONARY
+H₁ (Alternative): No unit root → Series is STATIONARY
+
+Decision rule: same as ADF
+  p-value < 0.05  → Stationary  ✅
+  p-value ≥ 0.05  → Non-stationary  ❌
+```
+
+```python
+from statsmodels.tsa.stattools import PhillipsPerron
+
+pp_result = PhillipsPerron(series, test_type='tau')   # 'tau' = no trend, 'rho' = with trend
+print(f"PP Statistic : {pp_result.stat:.4f}")
+print(f"PP p-value   : {pp_result.pvalue:.4f}")
+print(f"→ {'Stationary' if pp_result.pvalue < 0.05 else 'Non-stationary'}")
+```
+
+**When to use PP over ADF:**
+- When your series has heteroskedastic errors (e.g., financial returns)
+- As a cross-check alongside ADF — if both agree, more confidence in the conclusion
+- PP is generally preferred for **financial time series**
+
+### 6.2 Zivot-Andrews Test (Structural Break)
+
+The **Zivot-Andrews test** tests for a unit root while **allowing for a single structural break** in the series — a change in level, trend, or both at an unknown breakpoint.
+
+```
+H₀: Unit root WITH no structural break
+H₁: Stationary WITH a structural break at some unknown time t*
+
+If you reject H₀ → the series is stationary around a broken trend/level
+```
+
+```python
+from statsmodels.tsa.stattools import zivot_andrews
+
+za_result = zivot_andrews(
+    series,
+    maxlag=None,           # auto-select lag length
+    regression='c',        # 'c'=break in level, 't'=break in trend, 'ct'=both
+    autolag='t-stat',
+)
+za_stat, pvalue, cvdict, baselag, baseic = za_result
+print(f"Zivot-Andrews Statistic : {za_stat:.4f}")
+print(f"p-value                 : {pvalue:.4f}")
+print(f"Critical values: {cvdict}")
+print(f"→ {'Reject H₀: stationary with structural break' if pvalue < 0.05 else 'Fail to reject H₀: unit root'}")
+```
+
+**When to use:**
+- Macro-economic series (GDP, inflation) with known structural events (2008 crisis, COVID)
+- Any series where you visually see a sudden level shift or trend change
+- Use this BEFORE concluding a series is non-stationary — it may be stationary around a break
+
+### 6.3 Test Comparison Summary
+
+| Test | Null Hypothesis | Good For | Python |
+|------|----------------|----------|--------|
+| **ADF** | Unit root | General purpose | `adfuller()` |
+| **KPSS** | Stationary | Cross-check with ADF | `kpss()` |
+| **PP** | Unit root | Heterosk. errors, finance | `PhillipsPerron()` |
+| **Zivot-Andrews** | Unit root, no break | Series with structural breaks | `zivot_andrews()` |
+
+---
+
+## 7. ADF + KPSS Combined Decision
 
 Using both tests together gives a more reliable conclusion:
 
@@ -261,7 +334,7 @@ def stationarity_report(series):
 
 ---
 
-## 7. Making a Series Stationary
+## 8. Making a Series Stationary
 
 ### 7.1 Method 1 — First Differencing
 
@@ -341,7 +414,7 @@ stationarity_report(series_final)
 
 ---
 
-## 8. Integration Order d
+## 9. Integration Order d
 
 The **order of integration** `d` is the minimum number of first differences required to make a series stationary.
 
@@ -361,7 +434,7 @@ ARIMA(p=1, d=1, q=0) means:
 
 ---
 
-## 9. Practical Checklist
+## 10. Practical Checklist
 
 Use this checklist every time you start working with a new time series:
 
@@ -371,13 +444,15 @@ Use this checklist every time you start working with a new time series:
 □ 3. Plot ACF — slow decay → non-stationary, spikes at s → seasonal
 □ 4. Run ADF test — note p-value and conclusion
 □ 5. Run KPSS test — note p-value and conclusion
-□ 6. Use ADF+KPSS table to determine stationarity status
-□ 7. If non-stationary:
+□ 6. If financial series or heteroskedastic errors → also run PP test
+□ 7. If you see a sudden level/trend shift → run Zivot-Andrews test
+□ 8. Use ADF+KPSS table to determine stationarity status
+□ 9. If non-stationary:
         - Trend present → first difference
         - Seasonality present → seasonal difference (period s)
         - Variance unstable → log transform first
-□ 8. Re-run ADF + KPSS on transformed series — confirm stationarity
-□ 9. Note the integration order d for ARIMA modeling
+□ 10. Re-run ADF + KPSS on transformed series — confirm stationarity
+□ 11. Note the integration order d for ARIMA modeling
 ```
 
 ---

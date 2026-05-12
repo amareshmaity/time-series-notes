@@ -13,8 +13,11 @@ By the end of this module, you will be able to:
 - Load and parse time series data from CSVs, APIs, databases, and Parquet files
 - Resample time series to any target frequency (upsample and downsample)
 - Detect and handle missing values using multiple imputation strategies
+- Add missingness indicator features to preserve information about gaps
 - Identify and treat outliers without introducing data leakage
 - Engineer lag features, rolling statistics, calendar features, and Fourier terms
+- Apply correct normalization/scaling strategies for tree-based and deep learning models
+- Use `tsfresh` for automated feature extraction
 - Build sliding window datasets ready for ML and deep learning models
 
 ---
@@ -34,10 +37,10 @@ By the end of this module, you will be able to:
 |------|-------|-------------|
 | [`01_data_collection_sources.md`](./01_data_collection_sources.md) | Data Collection & Sources | CSV/Parquet loading, datetime parsing, APIs, databases, DatetimeIndex |
 | [`02_resampling_and_frequency.md`](./02_resampling_and_frequency.md) | Resampling & Frequency | Downsampling, upsampling, aggregation rules, OHLC, offset aliases |
-| [`03_handling_missing_values.md`](./03_handling_missing_values.md) | Handling Missing Values | Forward/backward fill, interpolation, KNN, MICE, missingness patterns |
+| [`03_handling_missing_values.md`](./03_handling_missing_values.md) | Handling Missing Values | Forward/backward fill, interpolation, KNN, MICE, STL imputation, missingness indicators |
 | [`04_outlier_detection_and_treatment.md`](./04_outlier_detection_and_treatment.md) | Outlier Detection & Treatment | IQR, Z-score, STL residuals, Isolation Forest, Winsorizing, treatment strategies |
-| [`05_feature_engineering_for_ts.md`](./05_feature_engineering_for_ts.md) | Feature Engineering | Lag features, calendar features, Fourier terms, target encoding, leakage rules |
-| [`06_windowing_and_rolling_features.md`](./06_windowing_and_rolling_features.md) | Windowing & Rolling Features | Sliding windows, rolling mean/std/min/max, expanding windows, EWM |
+| [`05_feature_engineering_for_ts.md`](./05_feature_engineering_for_ts.md) | Feature Engineering | Lag features, calendar, Fourier terms, normalization/scaling, tsfresh, leakage rules |
+| [`06_windowing_and_rolling_features.md`](./06_windowing_and_rolling_features.md) | Windowing & Rolling Features | Sliding windows, rolling mean/std/min/max, expanding windows, EWM, DL datasets |
 
 ### 💻 Code Practicals
 
@@ -85,10 +88,12 @@ code/04_feature_engineering.py
 
 1. Always parse datetimes and set a **DatetimeIndex** as the first step
 2. Choose aggregation method (sum vs. mean) based on **domain semantics**, not convenience
-3. Lag/rolling features must be created **after the train/test split** or with strict shift alignment
-4. STL residuals are the most reliable way to detect **contextual outliers** in time series
-5. **Fourier terms** are the most compact way to capture multiple seasonalities for ML models
-6. A well-structured feature engineering pipeline is **reproducible** — always wrap it in a function or class
+3. After imputation, always add a **missingness indicator column** — the model needs to know where data was real vs. filled
+4. Lag/rolling features must be created **after the train/test split** or with strict shift alignment
+5. STL residuals are the most reliable way to detect **contextual outliers** in time series
+6. **Fourier terms** are the most compact way to capture multiple seasonalities for ML models
+7. Scaling is **optional for tree models**, **mandatory for DL** — always fit scaler on train only
+8. A well-structured feature engineering pipeline is **reproducible** — always wrap it in a function or class
 
 ---
 

@@ -12,8 +12,9 @@ By the end of this module, you will be able to:
 
 - Define time series data and distinguish it from cross-sectional data
 - Identify trend, seasonality, cyclicality, and noise components
-- Understand and test for stationarity using ADF and KPSS tests
+- Understand and test for stationarity using ADF, KPSS, Phillips-Perron, and Zivot-Andrews tests
 - Interpret ACF and PACF plots to identify model order
+- Use the Cross-Correlation Function (CCF) to find leading/lagging relationships between two series
 - Apply STL decomposition and interpret each component
 - Recognize different types of time series patterns in real data
 
@@ -34,8 +35,8 @@ By the end of this module, you will be able to:
 |------|-------|-------------|
 | [`01_what_is_time_series.md`](./01_what_is_time_series.md) | What is Time Series? | Definition, examples, types, TS task landscape |
 | [`02_components_trend_seasonality.md`](./02_components_trend_seasonality.md) | TS Components | Trend, seasonality, cyclicality, noise, additive vs multiplicative |
-| [`03_stationarity.md`](./03_stationarity.md) | Stationarity | Weak stationarity, ADF test, KPSS test, differencing techniques |
-| [`04_autocorrelation_acf_pacf.md`](./04_autocorrelation_acf_pacf.md) | ACF & PACF | Autocorrelation, ACF, PACF, Ljung-Box test, model order selection |
+| [`03_stationarity.md`](./03_stationarity.md) | Stationarity | Weak stationarity, ADF, KPSS, Phillips-Perron, Zivot-Andrews, differencing |
+| [`04_autocorrelation_acf_pacf.md`](./04_autocorrelation_acf_pacf.md) | ACF, PACF & CCF | Autocorrelation, ACF, PACF, CCF, Ljung-Box, model order selection |
 | [`05_decomposition.md`](./05_decomposition.md) | Decomposition | Classical, STL, MSTL, trend/seasonal strength, deseasonalization |
 
 ### 💻 Code Practicals
@@ -70,8 +71,10 @@ code/01_basics_exploration.py   →   code/02_decomposition_demo.py
 1. Time series rows are **not independent** — temporal order is fundamental
 2. Most models require **stationarity** — always test with ADF + KPSS before modeling
 3. **ACF** cuts off → MA order; **PACF** cuts off → AR order
-4. Use **STL** over classical decomposition for all practical work
-5. Check residuals with **Ljung-Box** — white noise residuals = well-specified model
+4. Use **CCF** to detect leading/lagging relationships between two variables
+5. Use **STL** over classical decomposition for all practical work
+6. Check residuals with **Ljung-Box** — white noise residuals = well-specified model
+7. For financial series or structural breaks: add **PP** and **Zivot-Andrews** tests
 
 ---
 

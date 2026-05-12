@@ -17,6 +17,7 @@
 7. [Box-Jenkins Methodology](#7-box-jenkins-methodology)
 8. [auto_arima — Automated Order Selection](#8-auto_arima--automated-order-selection)
 9. [Forecasting and Prediction Intervals](#9-forecasting-and-prediction-intervals)
+10. [ARIMAX / SARIMAX — Exogenous Regressors](#10-arimax--sarimax--exogenous-regressors)
 
 ---
 
@@ -528,6 +529,122 @@ At horizon h=∞: error → Var[y(t)] (uncertainty equals full series variance)
 ```
 
 This is why **short-horizon forecasts are always more accurate** than long-horizon ones.
+
+---
+
+## 10. ARIMAX / SARIMAX — Exogenous Regressors
+
+ARIMAX (ARIMA with eXogenous variables) and SARIMAX extend the ARIMA family to incorporate **external predictors** — making them critical for production forecasting where covariates (promotions, weather, price, calendar events) are available.
+
+### 10.1 Mathematical Extension
+
+```
+ARIMAX(p,d,q) with exogenous variables X:
+
+  φ(B) · (1-B)ᵈ · y(t) = c + β·X(t) + θ(B) · ε(t)
+
+SARIMAX(p,d,q)(P,D,Q,s) with exogenous variables:
+
+  φ(B) · Φ(Bˢ) · (1-B)ᵈ · (1-Bˢ)ᴰ · y(t) = c + β·X(t) + θ(B) · Θ(Bˢ) · ε(t)
+
+Where:
+  X(t)  = matrix of exogenous variables at time t  (known future values required at forecast time!)
+  β     = coefficient vector for exogenous predictors
+  All other terms are the same as SARIMA
+```
+
+### 10.2 When to Use ARIMAX/SARIMAX
+
+| Scenario | Exogenous Variables |
+|----------|---------------------|
+| Retail sales forecasting | Promotions, holidays, price, competitor actions |
+| Energy demand | Temperature, day-of-week, public holidays |
+| Tourism | Airline seat availability, events, school holidays |
+| Finance | Macroeconomic indicators, sentiment indices |
+| Supply chain | Lead times, inventory levels, promotional calendar |
+
+> **Critical requirement**: At forecast time, you must have **known future values** of ALL exogenous variables for every step you wish to forecast. Unknown future regressors must be separately forecasted first.
+
+### 10.3 Implementation
+
+```python
+import pandas as pd
+import numpy as np
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+# Example: Monthly sales with promotions and holiday indicators as covariates
+# X_train shape: (n_train, n_covariates)
+# X_test  shape: (n_test,  n_covariates) — MUST be fully known
+
+# Build exogenous feature matrix
+X_train = train_df[["is_promotion", "is_holiday", "price_discount_pct"]].values
+X_test  = test_df[["is_promotion",  "is_holiday", "price_discount_pct"]].values
+
+# Fit SARIMAX with exogenous regressors
+model = SARIMAX(
+    train_df["sales"],
+    exog=X_train,
+    order=(1, 1, 1),
+    seasonal_order=(1, 1, 1, 12),
+    trend="c",
+    enforce_stationarity=True,
+    enforce_invertibility=True,
+)
+fitted = model.fit(disp=False, maxiter=300)
+
+print(fitted.summary())
+print(f"\nAIC: {fitted.aic:.2f} | BIC: {fitted.bic:.2f}")
+
+# Print exogenous coefficients
+print("\nExogenous Variable Coefficients:")
+for name, coef, pval in zip(
+    ["is_promotion", "is_holiday", "price_discount_pct"],
+    fitted.params[1:4],
+    fitted.pvalues[1:4],
+):
+    sig = "✅" if pval < 0.05 else "❌"
+    print(f"  {name:<22}: β={coef:+.4f}  p={pval:.4f} {sig}")
+```
+
+### 10.4 Forecasting with Future Exogenous Values
+
+```python
+# Generate forecast — must supply future exogenous values
+forecast_result = fitted.get_forecast(
+    steps=len(X_test),
+    exog=X_test,          # REQUIRED: future covariate values
+)
+forecast_mean = forecast_result.predicted_mean
+forecast_ci   = forecast_result.conf_int(alpha=0.05)
+
+# Plot
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(figsize=(13, 5))
+ax.plot(train_df["sales"][-36:], color="gray", linewidth=1, label="Train")
+ax.plot(test_df["sales"],  color="black",   linewidth=2, label="Actual")
+ax.plot(forecast_mean,     color="#D7191C", linewidth=2, linestyle="--", label="SARIMAX Forecast")
+ax.fill_between(
+    forecast_ci.index,
+    forecast_ci.iloc[:, 0], forecast_ci.iloc[:, 1],
+    color="#D7191C", alpha=0.15, label="95% PI"
+)
+ax.axvline(train_df.index[-1], color="black", linewidth=0.8, linestyle=":")
+ax.legend()
+ax.set_title("SARIMAX Forecast with Promotion & Holiday Regressors")
+plt.tight_layout()
+plt.show()
+```
+
+### 10.5 Key Distinctions
+
+| Model | Exog Support | Library |
+|-------|-------------|--------|
+| `ARIMA` | ❌ None | `statsmodels.tsa.arima.model.ARIMA` |
+| `SARIMAX` | ✅ Yes | `statsmodels.tsa.statespace.sarimax.SARIMAX` |
+| `AutoARIMA` (pmdarima) | ✅ Yes (`exogenous=`) | `pmdarima` |
+| `AutoARIMA` (statsforecast) | ✅ Yes (`X_df=`) | `statsforecast` |
+
+> **Production tip**: Always run SARIMAX without exogenous variables first. If exogenous covariates improve AIC AND out-of-sample RMSE, include them. If only AIC improves, they may be overfit.
 
 ---
 

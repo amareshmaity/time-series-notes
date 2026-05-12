@@ -23,7 +23,14 @@ import matplotlib.pyplot as plt
 try:
     from neuralforecast import NeuralForecast
     from neuralforecast.models import TFT, LSTM, NBEATS
-    from neuralforecast.losses.pytorch import MQLoss
+    # MQLoss location changed across versions — handle both
+    try:
+        from neuralforecast.losses.pytorch import MQLoss
+    except ImportError:
+        try:
+            from neuralforecast.losses import MQLoss
+        except ImportError:
+            MQLoss = "MQLoss"   # string-based loss name for very new versions
     HAS_NF = True
     print("neuralforecast installed ✅")
 except ImportError:
@@ -97,8 +104,11 @@ if HAS_NF:
         input_size=H * 3,   # 3× horizon lookback
 
         # Covariate specification
-        hist_exog_list=["price", "is_promo", "is_holiday"],     # past-only (not known future)
-        futr_exog_list=["day_of_week", "month", "is_holiday"],  # known for future dates
+        # NOTE: a variable must appear in ONLY ONE of hist_exog_list or futr_exog_list
+        # is_promo is known in advance (planned promotions) → futr_exog_list only
+        # price is historical (realized price) → hist_exog_list only
+        hist_exog_list=["price", "is_holiday"],             # past-only (not known future)
+        futr_exog_list=["day_of_week", "month", "is_holiday", "is_promo"],  # known for future dates
         stat_exog_list=["store_size"],                           # time-invariant
 
         # Architecture
@@ -185,7 +195,16 @@ if HAS_NF:
         act   = actual.loc[preds.index]
         return np.sqrt(((act - preds)**2).mean())
 
-    tft_rmse    = eval_model(forecast_df, "TFT-median", actual_vals) if "TFT-median" in forecast_df.columns else eval_model(forecast_df, [c for c in forecast_df.columns if "50" in c or "median" in c.lower()][0], actual_vals)
+    def find_col(df, candidates):
+        """Find first column matching any candidate substring (case-insensitive)."""
+        for pat in candidates:
+            matches = [c for c in df.columns if pat.lower() in c.lower()]
+            if matches:
+                return matches[0]
+        return None
+
+    tft_q50_col = find_col(forecast_df, ["median", "50", "q50", "TFT"])
+    tft_rmse    = eval_model(forecast_df, tft_q50_col, actual_vals) if tft_q50_col else float("nan")
     lstm_rmse   = eval_model(forecast_all, "LSTM", actual_vals)
     nbeats_rmse = eval_model(forecast_all, "NBEATS", actual_vals)
 
@@ -216,10 +235,10 @@ if HAS_NF:
     fcst_store = forecast_df[forecast_df.unique_id == store_id]
     actual_store = test_df[test_df.unique_id == store_id]
 
-    # Find quantile column names
-    q10_col = [c for c in fcst_store.columns if "10" in c][0] if any("10" in c for c in fcst_store.columns) else None
-    q50_col = [c for c in fcst_store.columns if "50" in c or "median" in c.lower()][0] if any("50" in c or "median" in c.lower() for c in fcst_store.columns) else None
-    q90_col = [c for c in fcst_store.columns if "90" in c][0] if any("90" in c for c in fcst_store.columns) else None
+    # Find quantile column names robustly
+    q10_col = find_col(fcst_store, ["10", "q10"])
+    q50_col = find_col(fcst_store, ["median", "50", "q50"])
+    q90_col = find_col(fcst_store, ["90", "q90"])
 
     axes[0].plot(hist["ds"], hist["y"], color="gray", linewidth=1.2, label="History")
     axes[0].plot(actual_store["ds"], actual_store["y"], color="black", linewidth=2.5, label="Actual")
@@ -245,7 +264,7 @@ if HAS_NF:
 
     plt.suptitle("Temporal Fusion Transformer — Multi-Covariate Forecasting", fontweight="bold")
     plt.tight_layout()
-    plt.savefig("01_tft_comparison.png", bbox_inches="tight")
+    plt.savefig("04_tft_comparison.png", bbox_inches="tight")
     plt.show()
 
 else:

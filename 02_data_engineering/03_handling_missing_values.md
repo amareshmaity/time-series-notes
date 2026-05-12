@@ -14,8 +14,9 @@
 4. [Interpolation Methods](#4-interpolation-methods)
 5. [Advanced Imputation](#5-advanced-imputation)
 6. [Seasonal and Trend-Aware Imputation](#6-seasonal-and-trend-aware-imputation)
-7. [Choosing the Right Strategy](#7-choosing-the-right-strategy)
-8. [After Imputation — Validation](#8-after-imputation--validation)
+7. [Missingness Indicator Features](#7-missingness-indicator-features)
+8. [Choosing the Right Strategy](#8-choosing-the-right-strategy)
+9. [After Imputation — Validation](#9-after-imputation--validation)
 
 ---
 
@@ -340,7 +341,94 @@ series_stl_imputed = stl_impute(series, period=12)
 
 ---
 
-## 7. Choosing the Right Strategy
+## 7. Missingness Indicator Features
+
+Imputing a value does not make the observation the same as a real one. **Always add a binary indicator column** to tell the model where imputation happened — a crucial pattern in production systems.
+
+### 7.1 Why Indicators Matter
+
+```
+Without indicator:
+  Model sees: [..., 120, 118, 115, 115, 115, 119, ...]  ← flat gap looks normal
+  Model can't distinguish real 115 from imputed 115
+
+With indicator:
+  Model sees: [..., 120, 118, 115, 115, 115, 119, ...]  ← values
+              [...,   0,   0,   1,   1,   1,   0, ...]  ← is_missing flag
+  Model learns: "during imputed periods, my confidence should be lower"
+```
+
+### 7.2 Implementation
+
+```python
+import pandas as pd
+import numpy as np
+
+def impute_with_indicator(
+    series: pd.Series,
+    method: str = "linear",
+    limit: int = None,
+) -> pd.DataFrame:
+    """
+    Impute missing values and add a binary missingness indicator column.
+    Returns a DataFrame with both the imputed series and the indicator.
+    """
+    indicator = series.isna().astype(int)     # 1 where missing, 0 where observed
+
+    if method == "ffill":
+        imputed = series.ffill(limit=limit)
+    elif method == "linear":
+        imputed = series.interpolate(method="linear", limit=limit)
+    elif method == "seasonal":
+        imputed = seasonal_fill(series)        # from section 3.4
+    else:
+        imputed = series.fillna(method)
+
+    return pd.DataFrame({
+        series.name or "value":        imputed,
+        f"{series.name or 'value'}_missing": indicator,
+    })
+
+# Usage
+result = impute_with_indicator(series, method="linear")
+print(result.head(10))
+# Now feature engineering operates on BOTH columns
+```
+
+### 7.3 Indicator for Long Gaps — Gap Length Feature
+
+For long gaps, also encode **how long** the gap has been going:
+
+```python
+def gap_length_feature(series: pd.Series) -> pd.Series:
+    """
+    Returns how many consecutive steps the series has been missing AT EACH POINT.
+    0 when observed, 1 on first missing step, 2 on second, etc.
+    """
+    is_missing = series.isna().astype(int)
+    # Cumulative count within each gap block
+    gap_id = (~series.isna()).cumsum()      # increments at each observed value
+    gap_len = is_missing.groupby(gap_id).cumsum()
+    return gap_len
+
+series_df = pd.DataFrame({"value": series})
+series_df["is_missing"]  = series.isna().astype(int)
+series_df["gap_length"]  = gap_length_feature(series)
+```
+
+### 7.4 When to Use Indicators
+
+| Situation | Use Indicator? |
+|-----------|----------------|
+| Short random gaps (1–2 steps) | Optional — low impact |
+| Systematic gaps (night hours, weekends) | ✅ Yes — model should learn this pattern |
+| Long block gaps (device offline) | ✅ Yes — high uncertainty |
+| MNAR missingness | ✅ Always — the missingness itself is informative |
+| DL models (LSTM, TFT) | ✅ Yes — pass as additional input channel |
+
+---
+
+## 8. Choosing the Right Strategy
 
 ```
 Decision Tree:
@@ -374,7 +462,7 @@ Decision Tree:
 
 ---
 
-## 8. After Imputation — Validation
+## 9. After Imputation — Validation
 
 Always validate that imputation:
 1. Did not introduce negative values (if domain-constrained)

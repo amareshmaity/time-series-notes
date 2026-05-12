@@ -15,8 +15,10 @@ By the end of this module, you will be able to:
 - Implement TCN with dilated causal convolutions for long-range patterns
 - Design Seq2Seq encoder-decoder architectures with attention
 - Understand the N-BEATS doubly residual stacking architecture
-- Configure and train the Temporal Fusion Transformer (TFT)
+- Configure and train the Temporal Fusion Transformer (TFT) with all covariate types
+- Build the `create_future_df` scaffold for TFT inference with known-future covariates
 - Apply training best practices: gradient clipping, LR scheduling, early stopping
+- Write reusable `train_epoch` / `evaluate` training utilities
 
 ---
 
@@ -36,10 +38,10 @@ By the end of this module, you will be able to:
 |------|-------|-------------|
 | [`01_rnn_lstm_gru.md`](./01_rnn_lstm_gru.md) | RNN, LSTM, GRU | Vanishing gradient, LSTM gates, GRU simplification, implementation |
 | [`02_temporal_convolutional_networks.md`](./02_temporal_convolutional_networks.md) | TCN | Dilated causal convolutions, receptive field, WaveNet connection |
-| [`03_seq2seq_and_attention.md`](./03_seq2seq_and_attention.md) | Seq2Seq + Attention | Encoder-decoder, Bahdanau attention, multi-step forecasting |
-| [`04_nbeats_and_nhits.md`](./04_nbeats_and_nhits.md) | N-BEATS & N-HiTS | Doubly residual stacking, interpretable decomposition, N-HiTS hierarchy |
-| [`05_temporal_fusion_transformer.md`](./05_temporal_fusion_transformer.md) | TFT | Variable selection, LSTM encoder, multi-head attention, interpretability |
-| [`06_training_best_practices.md`](./06_training_best_practices.md) | Training Best Practices | Normalization, clipping, LR scheduling, early stopping, scaling |
+| [`03_seq2seq_and_attention.md`](./03_seq2seq_and_attention.md) | Seq2Seq + Attention | Encoder-decoder, Bahdanau attention, teacher forcing, scheduled sampling |
+| [`04_nbeats_and_nhits.md`](./04_nbeats_and_nhits.md) | N-BEATS & N-HiTS | Doubly residual stacking, interpretable decomposition, N-HiTS multi-rate hierarchy |
+| [`05_temporal_fusion_transformer.md`](./05_temporal_fusion_transformer.md) | TFT | VSN, GRN, LSTM encoder/decoder, attention heatmap, `create_future_df` helper |
+| [`06_training_best_practices.md`](./06_training_best_practices.md) | Training Best Practices | RevIN, Huber loss, gradient clipping, LR scheduling, `train_epoch`/`evaluate` utilities |
 
 ### 💻 Code Practicals
 
@@ -81,7 +83,7 @@ code/01 → 02 → 03 → 04
 | **TCN** | Dilated causal conv | Direct | ❌ | ✅ | Long-range parallel training |
 | **Seq2Seq** | LSTM + decoder | Native | ❌ | ✅ | Multi-step structured forecast |
 | **N-BEATS** | FC blocks + residuals | Native | ✅ (generic) | ❌ | Pure univariate, interpretable |
-| **N-HiTS** | Multi-rate sampling | Native | ✅ | ❌ | Long-horizon efficiency |
+| **N-HiTS** | Multi-rate sampling | Native | ✅ | ❌ (v1) | Long-horizon efficiency |
 | **TFT** | LSTM + Multi-head attn | Native | ✅ | ✅ | Production, covariates, intervals |
 
 ---

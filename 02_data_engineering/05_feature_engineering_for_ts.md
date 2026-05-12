@@ -14,8 +14,10 @@
 4. [Fourier Terms for Seasonality](#4-fourier-terms-for-seasonality)
 5. [Target Encoding](#5-target-encoding)
 6. [Interaction Features](#6-interaction-features)
-7. [The Leakage Rules](#7-the-leakage-rules)
-8. [Reusable Feature Pipeline](#8-reusable-feature-pipeline)
+7. [Normalization and Scaling](#7-normalization-and-scaling)
+8. [Automated Feature Extraction (tsfresh)](#8-automated-feature-extraction-tsfresh)
+9. [The Leakage Rules](#9-the-leakage-rules)
+10. [Reusable Feature Pipeline](#10-reusable-feature-pipeline)
 
 ---
 
@@ -235,7 +237,182 @@ df["price_x_promo"] = df["price"] * df["is_promo"]
 
 ---
 
-## 7. The Leakage Rules
+## 7. Normalization and Scaling
+
+Scaling is **optional for tree-based models** (XGBoost, LightGBM) but **mandatory for deep learning** (LSTM, TFT, Transformer). Wrong scaling is one of the most common silent bugs in TS pipelines.
+
+### 7.1 Methods
+
+```python
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler
+import numpy as np
+
+# StandardScaler: zero mean, unit variance
+# Best for: normally distributed series, ARIMA residuals
+scaler_std = StandardScaler()
+train_scaled = scaler_std.fit_transform(train.values.reshape(-1, 1))
+test_scaled  = scaler_std.transform(test.values.reshape(-1, 1))
+
+# MinMaxScaler: scale to [0, 1]
+# Best for: bounded data (e.g., percentages, prices)
+scaler_mm = MinMaxScaler(feature_range=(0, 1))
+train_scaled = scaler_mm.fit_transform(train.values.reshape(-1, 1))
+
+# RobustScaler: uses median and IQR — robust to outliers
+# Best for: financial data, IoT sensor data with spikes
+scaler_rb = RobustScaler()
+train_scaled = scaler_rb.fit_transform(train.values.reshape(-1, 1))
+```
+
+### 7.2 The Golden Rule of Scaling
+
+```python
+# ✅ CORRECT: Fit on train, transform both
+scaler = StandardScaler()
+train_scaled = scaler.fit_transform(train.reshape(-1, 1)).flatten()
+test_scaled  = scaler.transform(test.reshape(-1, 1)).flatten()
+
+# ❌ WRONG: Fit on all data (leaks test statistics into training)
+scaler.fit_transform(all_data.reshape(-1, 1))   # DO NOT DO THIS!
+```
+
+### 7.3 Per-Series Scaling (Global Models)
+
+When training a **global model** on many time series (e.g., thousands of retail SKUs), scale each series independently:
+
+```python
+import pandas as pd
+import numpy as np
+
+def scale_series_globally(
+    df: pd.DataFrame,      # long format: columns = [unique_id, ds, y]
+    target_col: str = "y",
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Normalize each unique series by its own mean and std.
+    Returns scaled DataFrame and a scale_params DataFrame for inverse transform.
+    """
+    df = df.copy()
+    scale_params = (
+        df.groupby("unique_id")[target_col]
+        .agg(mean="mean", std="std")
+        .reset_index()
+    )
+    scale_params["std"] = scale_params["std"].replace(0, 1)   # avoid division by zero
+
+    df = df.merge(scale_params, on="unique_id")
+    df[target_col] = (df[target_col] - df["mean"]) / df["std"]
+    df = df.drop(columns=["mean", "std"])
+    return df, scale_params
+
+def inverse_scale(forecast_df, scale_params, target_col="y"):
+    """Reverse the per-series scaling to get original units."""
+    forecast_df = forecast_df.merge(scale_params, on="unique_id")
+    forecast_df[target_col] = forecast_df[target_col] * forecast_df["std"] + forecast_df["mean"]
+    return forecast_df.drop(columns=["mean", "std"])
+```
+
+### 7.4 Log Transform as Scaling
+
+For **right-skewed, positive** series (revenue, sales, prices):
+
+```python
+# Log1p is safer than log (handles zeros)
+import numpy as np
+train_log = np.log1p(train)
+test_log  = np.log1p(test)
+
+# Inverse: expm1
+forecast_original_scale = np.expm1(forecast_log)
+```
+
+---
+
+## 8. Automated Feature Extraction (tsfresh)
+
+**`tsfresh`** automatically extracts hundreds of statistical features from time series — useful for classification and regression tasks where you don't want to hand-craft features.
+
+### 8.1 Installation
+
+```bash
+pip install tsfresh
+```
+
+### 8.2 Basic Usage
+
+```python
+from tsfresh import extract_features, select_features
+from tsfresh.utilities.dataframe_functions import impute
+import pandas as pd
+
+# tsfresh expects a long-format DataFrame with columns:
+#   id (series identifier), time (time index), value
+df_long = pd.DataFrame({
+    "id":    [0]*100 + [1]*100,
+    "time":  list(range(100)) * 2,
+    "value": series_1.tolist() + series_2.tolist(),
+})
+
+# Extract all features (>700 features by default)
+features = extract_features(
+    df_long,
+    column_id="id",
+    column_sort="time",
+    column_value="value",
+)
+impute(features)   # fill any NaN from failed calculations
+print(f"Extracted {features.shape[1]} features for {features.shape[0]} series")
+```
+
+### 8.3 Efficient Extraction (EfficientFCParameters)
+
+```python
+from tsfresh.feature_extraction import EfficientFCParameters, MinimalFCParameters
+
+# EfficientFCParameters: ~800 features, good balance of speed vs. coverage
+features_efficient = extract_features(
+    df_long,
+    column_id="id",
+    column_sort="time",
+    default_fc_parameters=EfficientFCParameters(),
+)
+
+# MinimalFCParameters: ~10 features, very fast — good for prototyping
+features_minimal = extract_features(
+    df_long,
+    column_id="id",
+    column_sort="time",
+    default_fc_parameters=MinimalFCParameters(),
+)
+```
+
+### 8.4 Feature Selection
+
+```python
+# Select only statistically relevant features for a classification/regression target
+y_labels = pd.Series([0, 1], index=[0, 1])   # label for each series
+
+features_filtered = select_features(
+    features,
+    y_labels,
+    fdr_level=0.05,   # false discovery rate threshold
+)
+print(f"Selected {features_filtered.shape[1]} relevant features")
+```
+
+### 8.5 When to Use tsfresh
+
+| Task | Use tsfresh? |
+|------|--------------|
+| TS Classification (e.g., ECG, activity recognition) | ✅ Yes — primary use case |
+| Regression on many series characteristics | ✅ Yes |
+| Forecasting (future values) | ❌ No — use lag/rolling features instead |
+| Anomaly detection features | ✅ Yes — can characterize windows |
+| Production real-time forecasting | ❌ No — too slow for row-by-row computation |
+
+---
+
+## 9. The Leakage Rules
 
 > **Core Rule**: At prediction time for period `t`, you may only use data from time `t-1` and earlier. Any feature that uses information from `t` or later is leaking.
 
@@ -271,7 +448,7 @@ df["roll7_mean"] = df["sales"].shift(1).rolling(7).mean()
 
 ---
 
-## 8. Reusable Feature Pipeline
+## 10. Reusable Feature Pipeline
 
 ```python
 class TimeSeriesFeatureBuilder:

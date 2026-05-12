@@ -16,6 +16,7 @@
 6. [Feature Scaling for Linear TS Models](#6-feature-scaling-for-linear-ts-models)
 7. [Linear Models with Fourier Features (Regression with Regressors)](#7-linear-models-with-fourier-features-regression-with-regressors)
 8. [When Linear Models Win](#8-when-linear-models-win)
+9. [Conformal Prediction Intervals for Any ML Model](#9-conformal-prediction-intervals-for-any-ml-model)
 
 ---
 
@@ -364,6 +365,161 @@ print(f"Ridge+Fourier CV α: {pipe_fourier.named_steps['ridge'].alpha_:.2f}")
 | Production on low-power hardware | Tiny model size, fast inference |
 | Regulatory requirements (banking, insurance) | Explainable, auditable |
 | Sparse, high-dimensional feature spaces | Lasso provides automatic selection |
+
+---
+
+## 9. Conformal Prediction Intervals for Any ML Model
+
+Statistical models (ARIMA, ETS) provide **exact analytical prediction intervals**. ML models don't — but **Conformal Prediction** gives distribution-free, statistically valid intervals for ANY trained model.
+
+### 9.1 Core Idea
+
+```
+Split Conformal Prediction:
+
+1. Split train into: proper_train + calibration_set
+   (calibration set is chronologically AFTER proper_train)
+
+2. Fit model on proper_train
+
+3. Compute residuals on calibration set:
+   r_i = |y_i - ŷ_i|   for all i in calibration set
+
+4. Compute q = (1-α)(1 + 1/n_cal) quantile of residuals r_i
+   (α = target error rate, e.g., 0.05 for 95% coverage)
+
+5. For test predictions:
+   PI = [ŷ(x) - q,  ŷ(x) + q]
+   
+   Coverage guarantee: P(y ∈ PI) ≥ 1 - α
+   This holds WITHOUT any distributional assumption!
+```
+
+### 9.2 Time Series Split (Chronological Calibration)
+
+```python
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+def conformal_prediction_intervals(
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_test: pd.DataFrame,
+    model,
+    alpha: float = 0.05,            # error rate (0.05 = 95% coverage)
+    calibration_frac: float = 0.2,  # fraction of train used for calibration
+) -> pd.DataFrame:
+    """
+    Split conformal prediction for time series.
+    
+    IMPORTANT: calibration set must be CHRONOLOGICALLY AFTER proper_train
+    to respect temporal ordering.
+    
+    Parameters:
+        alpha            : desired miscoverage rate (0.05 = 95% PI)
+        calibration_frac : fraction of training data held out as calibration set
+    
+    Returns:
+        DataFrame with columns: [pred, lower, upper]
+    """
+    n = len(X_train)
+    split_idx = int(n * (1 - calibration_frac))
+    
+    # Chronological split: proper train vs. calibration
+    X_prop  = X_train.iloc[:split_idx]
+    y_prop  = y_train.iloc[:split_idx]
+    X_calib = X_train.iloc[split_idx:]
+    y_calib = y_train.iloc[split_idx:]
+    
+    # Fit model on proper train only
+    model.fit(X_prop, y_prop)
+    
+    # Compute nonconformity scores (absolute residuals) on calibration set
+    y_calib_pred = model.predict(X_calib)
+    residuals = np.abs(y_calib.values - y_calib_pred)
+    
+    # Conformal quantile
+    n_cal = len(residuals)
+    q_level = np.ceil((1 - alpha) * (n_cal + 1)) / n_cal
+    q_level = min(q_level, 1.0)
+    q = np.quantile(residuals, q_level)
+    
+    print(f"Conformal quantile (q) at {(1-alpha)*100:.0f}% level: {q:.4f}")
+    
+    # Generate test predictions and intervals
+    y_pred = model.predict(X_test)
+    return pd.DataFrame({
+        "pred":  y_pred,
+        "lower": y_pred - q,
+        "upper": y_pred + q,
+    }, index=X_test.index)
+
+
+# Usage with Ridge (works with ANY sklearn-compatible model)
+pipe = Pipeline([
+    ("scaler", StandardScaler()),
+    ("ridge",  Ridge(alpha=10.0)),
+])
+
+pi_df = conformal_prediction_intervals(
+    X_train, y_train, X_test,
+    model=pipe, alpha=0.05,   # 95% PI
+)
+print(pi_df.head())
+```
+
+### 9.3 Validation — Coverage Check
+
+```python
+# Empirical coverage should be ≥ 1 - alpha
+coverage = (
+    (y_test.values >= pi_df["lower"].values) &
+    (y_test.values <= pi_df["upper"].values)
+).mean()
+print(f"Empirical coverage: {coverage:.3f}  (target: {1-0.05:.2f})")
+
+# Average interval width (narrower = better, given coverage is met)
+width = (pi_df["upper"] - pi_df["lower"]).mean()
+print(f"Average PI width: {width:.4f}")
+```
+
+### 9.4 Plot Conformal Prediction Intervals
+
+```python
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(figsize=(13, 5))
+ax.plot(y_test.values, color="black", linewidth=2, label="Actual")
+ax.plot(pi_df["pred"].values, color="#D7191C", linewidth=2,
+        linestyle="--", label="Predicted")
+ax.fill_between(
+    range(len(pi_df)),
+    pi_df["lower"], pi_df["upper"],
+    alpha=0.2, color="#D7191C",
+    label=f"95% Conformal PI (coverage={coverage:.2f})"
+)
+ax.legend()
+ax.set_title("Conformal Prediction Intervals (Distribution-Free)")
+plt.tight_layout()
+plt.show()
+```
+
+### 9.5 Conformal vs. Parametric Intervals
+
+| | Conformal PI | ARIMA Analytical PI | Bayesian PI |
+|--|-------------|--------------------|--------------|
+| **Distributional assumption** | None | Gaussian errors | Prior + posterior |
+| **Works for any model** | ✅ | ❌ (ARIMA only) | Depends on model |
+| **Valid coverage guarantee** | ✅ (finite-sample) | Asymptotic | Credible, not frequentist |
+| **Interval shape** | Symmetric (split CP) | Widening with horizon | Flexible |
+| **Computation** | Fast | Built-in | Slow (MCMC) |
+| **Best for** | Any ML model | ARIMA/ETS pipelines | Small data, uncertainty quantification |
+
+> **Production rule**: Use conformal prediction whenever you deploy an ML forecasting model that needs reliable prediction intervals — it requires no distributional assumptions and is straightforward to implement.
 
 ---
 

@@ -17,6 +17,7 @@
 7. [Ljung-Box Test](#7-ljung-box-test)
 8. [Lag Plots](#8-lag-plots)
 9. [Common ACF/PACF Patterns](#9-common-acfpacf-patterns)
+10. [Cross-Correlation Function (CCF)](#10-cross-correlation-function-ccf)
 
 ---
 
@@ -397,6 +398,92 @@ ACF:  Large spikes at lags 12, 24, 36 (multiples of 12)
 PACF: Spike at lag 12, smaller at 24, 36
 → Add seasonal MA or AR terms: SARIMA(p,d,q)(P,D,Q,12)
 ```
+
+---
+
+## 10. Cross-Correlation Function (CCF)
+
+While ACF/PACF measure a series' relationship with its **own past**, the **CCF** measures the correlation between **two different time series** across different lags.
+
+### 10.1 Definition
+
+```
+CCF(X, Y, k) = Corr[X(t), Y(t-k)]
+
+  k > 0: X leads Y (past values of X predict current Y)
+  k < 0: Y leads X (past values of Y predict current X)
+  k = 0: Contemporaneous correlation
+```
+
+### 10.2 Use Cases
+
+| Scenario | What CCF Reveals |
+|----------|------------------|
+| Does advertising spend drive sales? | CCF(ads, sales, k) — peak at k=+1 or +2 suggests ads lead sales by 1-2 weeks |
+| Does temperature predict energy demand? | CCF(temp, demand, k=0) should be high |
+| Does PMI predict GDP? | CCF(PMI, GDP, k=+1) — PMI is a leading indicator |
+
+### 10.3 Python Implementation
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.graphics.tsaplots import plot_ccf
+from statsmodels.tsa.stattools import ccf
+
+# Example: Does X (ads spend) lead Y (sales)?
+np.random.seed(42)
+n = 200
+X = pd.Series(np.random.normal(0, 1, n))          # input series
+Y = X.shift(2) + np.random.normal(0, 0.3, n)      # Y is X delayed by 2 lags + noise
+
+# Compute CCF values
+ccf_values = ccf(X.dropna(), Y.dropna(), unbiased=False)
+lags = np.arange(len(ccf_values))
+
+# Plot
+fig, ax = plt.subplots(figsize=(12, 4))
+ax.stem(lags[:30], ccf_values[:30], markerfmt='C0o', linefmt='C0-', basefmt='k-')
+ax.axhline(1.96 / np.sqrt(n), color='red', linestyle='--', label='95% CI')
+ax.axhline(-1.96 / np.sqrt(n), color='red', linestyle='--')
+ax.set_title('Cross-Correlation Function (CCF): X → Y')
+ax.set_xlabel('Lag k  (positive = X leads Y)')
+ax.set_ylabel('Correlation')
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# Read: significant spike at lag 2 → X leads Y by 2 periods
+```
+
+### 10.4 Important: Pre-whiten Before CCF
+
+If both series are autocorrelated (which they almost always are), the CCF will be spuriously inflated. **Pre-whiten** both series first:
+
+```python
+from statsmodels.tsa.arima.model import ARIMA
+
+# Step 1: Fit AR model to X (remove its own autocorrelation)
+model_X = ARIMA(X, order=(1, 0, 0)).fit()
+resid_X = model_X.resid
+
+# Step 2: Filter Y with the same AR model
+# Apply the same AR filter to Y
+resid_Y = Y - model_X.predict()
+
+# Step 3: CCF on the pre-whitened residuals
+ccf_clean = ccf(resid_X.dropna(), resid_Y.dropna(), unbiased=False)
+# Now the CCF isolates X→Y causation without autocorrelation noise
+```
+
+### 10.5 CCF vs. Granger Causality
+
+| Method | What It Does | Limitation |
+|--------|-------------|------------|
+| **CCF** | Shows correlation at different lags | Correlation ≠ causation |
+| **Granger Causality** | Tests if X improves forecast of Y beyond Y's own history | Still not true causality |
+| **PCMCI** | Causal discovery accounting for confounders | Module 12 |
 
 ---
 

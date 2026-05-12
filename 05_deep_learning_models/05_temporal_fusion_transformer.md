@@ -200,6 +200,47 @@ Common patterns:
   - Periodic spikes: at multiples of the seasonal period
 ```
 
+```python
+import matplotlib.pyplot as plt
+import numpy as np
+
+def inspect_tft_attention(nf_model, df_sample: pd.DataFrame, n_steps: int = 1):
+    """
+    Extract and visualize temporal self-attention weights from a fitted TFT.
+    
+    Parameters:
+        nf_model  : fitted NeuralForecast object containing a TFT
+        df_sample : one series in Nixtla long format
+        n_steps   : number of forward passes to average attention over
+    """
+    tft = nf_model.models[0]   # extract TFT from NeuralForecast wrapper
+    tft.eval()
+    
+    # Run one batch through the model to collect attention
+    with torch.no_grad():
+        windows_batch = tft._get_windows_batch(df_sample)
+        output        = tft.forward(windows_batch)
+    
+    # Access attention weights stored during forward pass
+    # (available via tft.interpret() in neuralforecast ≥ 0.3)
+    if hasattr(tft, "interpret"):
+        interp = tft.interpret(df_sample)
+        attn   = interp.get("temporal_attention", None)    # shape: (n_heads, H, L)
+    
+        if attn is not None:
+            avg_attn = attn.mean(axis=0)   # average across heads: (H, L)
+            fig, ax  = plt.subplots(figsize=(14, 5))
+            im = ax.imshow(avg_attn, aspect="auto", cmap="viridis")
+            ax.set_xlabel("Lookback Timestep (past → present)")
+            ax.set_ylabel("Forecast Horizon Step")
+            ax.set_title("TFT Temporal Attention Heatmap (avg across heads)")
+            plt.colorbar(im, ax=ax, label="Attention Weight")
+            plt.tight_layout()
+            plt.show()
+    else:
+        print("Upgrade neuralforecast (≥ 0.3) for attention visualization support.")
+```
+
 ---
 
 ## 6. Implementation with Neuralforecast
@@ -211,6 +252,51 @@ import pandas as pd
 import numpy as np
 from neuralforecast import NeuralForecast
 from neuralforecast.models import TFT
+
+def create_future_df(
+    df: pd.DataFrame,
+    h: int,
+    freq: str = "D",
+) -> pd.DataFrame:
+    """
+    Build the future covariate DataFrame required by neuralforecast's predict().
+    
+    For each unique_id in df, creates h future rows with:
+      - Correct future date range (immediately after each series ends)
+      - Calendar features computed automatically
+      - Other known-future covariates filled with their latest observed value
+        (or provided separately — this is a minimal scaffold).
+    
+    Parameters:
+        df   : training DataFrame in Nixtla long format (unique_id, ds, y, ...)
+        h    : forecast horizon
+        freq : pandas frequency string ('D', 'H', 'MS', etc.)
+    
+    Returns:
+        DataFrame with future rows for all unique_ids, no 'y' column
+    """
+    future_rows = []
+    for uid, group in df.groupby("unique_id"):
+        last_date    = group["ds"].max()
+        future_dates = pd.date_range(start=last_date, periods=h + 1, freq=freq)[1:]
+        
+        future = pd.DataFrame({"unique_id": uid, "ds": future_dates})
+        
+        # Compute calendar features that are always available in the future
+        future["day_of_week"] = future["ds"].dt.dayofweek
+        future["is_holiday"]  = 0     # placeholder: plug in real holiday calendar
+        future["is_promo"]    = 0     # placeholder: plug in real promo schedule
+        future["price"]       = group["price"].iloc[-1]  # carry-forward last price
+        
+        # Static features: same value for all future rows (no 'y' needed)
+        for col in ["store_size", "region"]:
+            if col in group.columns:
+                future[col] = group[col].iloc[-1]
+        
+        future_rows.append(future)
+    
+    return pd.concat(future_rows, ignore_index=True)
+
 
 # Nixtla long format with covariates
 df = pd.DataFrame({

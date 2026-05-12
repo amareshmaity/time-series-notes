@@ -17,6 +17,7 @@
 7. [Impulse Response Functions](#7-impulse-response-functions)
 8. [Forecast Error Variance Decomposition](#8-forecast-error-variance-decomposition)
 9. [VAR vs. Separate Univariate Models](#9-var-vs-separate-univariate-models)
+10. [VECM — Vector Error Correction Model](#10-vecm--vector-error-correction-model)
 
 ---
 
@@ -332,6 +333,135 @@ print(fevd.summary())
 | Cointegrated series | Use VECM (not VAR on levels) | Use ARIMA on differences |
 
 **When VAR wins**: economic indicators, energy markets, supply chain variables with clear cross-series dependencies and sufficient data (rule: T > 10 × K² × p).
+
+---
+
+## 10. VECM — Vector Error Correction Model
+
+When multiple I(1) series are **cointegrated** (share a long-run equilibrium relationship), fitting VAR on first differences discards that long-run information. The **VECM** corrects this by including an error correction term that pulls the system back toward equilibrium.
+
+### 10.1 Cointegration Intuition
+
+```
+Two I(1) series Y₁(t) and Y₂(t) are cointegrated if:
+  e(t) = Y₁(t) - β·Y₂(t)  is I(0) (stationary)
+
+Even though both series drift (random walk), their LINEAR COMBINATION is stationary.
+This means they share a long-run equilibrium: they can't drift apart indefinitely.
+
+Examples:
+  - Short-term and long-term interest rates (yield curve)
+  - Spot and futures prices for the same commodity
+  - Exchange rates among major currencies
+  - Electricity price and fuel cost
+```
+
+### 10.2 Johansen Cointegration Test
+
+```python
+from statsmodels.tsa.johansen import coint_johansen
+import pandas as pd
+import numpy as np
+
+# Test for cointegration among I(1) variables
+# All variables must be I(1) before this test
+result = coint_johansen(
+    df_levels[variables],   # DataFrame of levels (NOT differenced)
+    det_order=0,            # 0=no intercept, 1=restricted intercept, -1=no constant
+    k_ar_diff=2,            # number of lagged differences (like p-1 in VAR)
+)
+
+print("Johansen Cointegration Test")
+print("=" * 50)
+print("\nTrace Statistic:")
+print(f"  {'Rank':<10} {'Trace stat':<15} {'Crit (5%)':<15} {'Cointegrated?':<15}")
+for i in range(len(variables)):
+    trace   = result.lr1[i]
+    crit_5  = result.cvt[i, 1]     # 5% critical value
+    is_coint = trace > crit_5
+    print(f"  r ≤ {i:<8} {trace:<15.4f} {crit_5:<15.4f} {'✅ Yes' if is_coint else '❌ No'}")
+
+print("\nCointegrating vectors (beta):")
+print(pd.DataFrame(result.evec.T, columns=variables).round(4))
+```
+
+### 10.3 VECM Equation
+
+```
+VECM with r cointegrating relations:
+
+  Δy(t) = α·βᵀ·y(t-1) + Γ₁·Δy(t-1) + ... + Γₚ₋₁·Δy(t-p+1) + ε(t)
+
+Where:
+  Δy(t)   = first difference of the K×1 vector (stationary)
+  β       = K×r matrix of cointegrating vectors (the long-run equilibria)
+  α       = K×r matrix of adjustment speeds (how fast each variable corrects)
+  βᵀ·y(t-1) = r error correction terms (deviation from long-run equilibrium at t-1)
+  Γᵢ      = K×K matrices of short-run dynamics
+```
+
+### 10.4 Implementation
+
+```python
+from statsmodels.tsa.vector_ar.vecm import VECM, select_coint_rank
+
+# Step 1: Determine cointegration rank
+coint_rank = select_coint_rank(
+    df_levels[variables],
+    det_order=0,
+    k_ar_diff=2,
+    method="trace",
+    signif=0.05,
+)
+print(f"Selected cointegration rank: {coint_rank.rank}")
+
+# Step 2: Fit VECM
+vecm = VECM(
+    df_levels[variables],
+    k_ar_diff=2,                 # number of lagged differences
+    coint_rank=coint_rank.rank,  # number of cointegrating relations
+    deterministic="ci",          # 'n'=none, 'co'=const in CE, 'ci'=intercept in CE
+)
+vecm_fitted = vecm.fit()
+print(vecm_fitted.summary())
+
+# Step 3: Forecast
+forecast_vecm = vecm_fitted.predict(steps=12)
+forecast_df = pd.DataFrame(
+    forecast_vecm,
+    columns=variables,
+    index=pd.date_range(
+        start=df_levels.index[-1] + df_levels.index.freq,
+        periods=12,
+        freq=df_levels.index.freq,
+    )
+)
+print("\nVECM Forecast (original levels scale):")
+print(forecast_df.head())
+```
+
+### 10.5 VAR vs. VECM Decision
+
+```
+Are all variables I(1)?  →  YES
+  │
+  ├── Run Johansen test for cointegration
+  │
+  ├── Cointegrated (r ≥ 1)?
+  │   └── YES  → Use VECM (preserves long-run equilibrium information)
+  │
+  └── Not cointegrated (r = 0)?
+      └── YES  → First-difference all series, fit VAR on Δy
+
+Are variables I(0) (already stationary)?  →  Use VAR on levels
+```
+
+| Scenario | Correct Model |
+|----------|---------------|
+| All I(1), cointegrated | **VECM** |
+| All I(1), not cointegrated | VAR on first differences |
+| All I(0) | VAR on levels |
+| Mixed I(0) and I(1) | Transform to I(0) first, then VAR |
 
 ---
 

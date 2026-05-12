@@ -93,7 +93,9 @@ if HAS_NF:
         n_blocks=[3, 3, 1],
         n_harmonics=2,             # Fourier harmonics (seasonality stack)
         n_polynomials=2,           # polynomial degree (trend stack)
-        mlp_units=[[256, 256]] * 7,
+        # mlp_units replaced with n_mlp_units (scalar) in neuralforecast >= 0.4
+        n_mlp_units=256,
+        n_layers=4,
         max_steps=1000,
         batch_size=32,
         learning_rate=1e-3,
@@ -121,7 +123,8 @@ if HAS_NF:
         input_size=H * 2,
         stack_types=["identity"] * 3,  # generic (learned basis)
         n_blocks=[1, 1, 1],
-        mlp_units=[[512, 512]] * 3,
+        n_mlp_units=512,
+        n_layers=4,
         max_steps=1000,
         batch_size=32,
         learning_rate=1e-3,
@@ -145,9 +148,14 @@ if HAS_NF:
         input_size=H * 3,
         stack_types=["identity", "identity", "identity"],
         n_blocks=[1, 1, 1],
-        n_pool_kernel_size=[4, 2, 1],   # multi-rate sampling
+        # Multi-rate downsampling: low-freq stacks see smoother input
+        # n_freq_downsample controls output interpolation factor per stack
         n_freq_downsample=[12, 4, 1],
-        mlp_units=[[256, 256]] * 3,
+        # pooling_mode replaces n_pool_kernel_size in neuralforecast >= 0.4
+        pooling_mode="AveragePooling",
+        interpolation_mode="linear",
+        n_mlp_units=256,
+        n_layers=4,
         max_steps=1000,
         batch_size=32,
         learning_rate=1e-3,
@@ -223,7 +231,7 @@ if HAS_NF:
 
     plt.suptitle("N-BEATS & N-HiTS — Monthly Forecasting", fontweight="bold")
     plt.tight_layout()
-    plt.savefig("01_nbeats_comparison.png", bbox_inches="tight")
+    plt.savefig("03_nbeats_comparison.png", bbox_inches="tight")
     plt.show()
 
 else:
