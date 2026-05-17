@@ -21,6 +21,8 @@
 
 A **time series** is a sequence of observations recorded **at successive, ordered points in time**.
 
+![alt text](../Images/time-series.png)
+
 ```
 Formal definition:
   A time series is a collection of random variables {Y_t}
@@ -36,7 +38,13 @@ Formal definition:
 
 ---
 
-## 2. Real-World Examples
+## 2. Need of timeseries
+
+![alt text](../Images/need-of-timeseries.png)
+
+
+
+### Real-World Examples
 
 | Domain | Time Series | Typical Frequency |
 |--------|-------------|-------------------|
@@ -48,6 +56,8 @@ Formal definition:
 | **IoT / Manufacturing** | Sensor readings, CPU usage, machine vibration | Millisecond, second |
 | **Economics** | GDP, inflation, unemployment rate | Monthly, quarterly |
 | **Transportation** | Traffic volume, flight delays, ride-sharing demand | Minute, hourly |
+
+
 
 ---
 

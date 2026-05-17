@@ -18,6 +18,8 @@
 
 ---
 
+![alt text](../Images/decomposing.png)
+
 ## 1. Why Decompose?
 
 Decomposition serves three distinct purposes:

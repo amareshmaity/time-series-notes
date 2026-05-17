@@ -23,6 +23,9 @@
 Any time series `Y(t)` can be expressed as a combination of up to four components:
 
 ```
+Decomposition Model
+-------------------
+
 Additive model:
   Y(t) = T(t) + S(t) + C(t) + R(t)
 
@@ -30,12 +33,12 @@ Multiplicative model:
   Y(t) = T(t) × S(t) × C(t) × R(t)
 ```
 
-| Component | Symbol | What It Captures | Typical Duration |
-|-----------|--------|------------------|-----------------|
-| **Trend** | T(t) | Long-run direction (up, down, flat) | Years to decades |
-| **Seasonal** | S(t) | Regular, fixed-period calendar patterns | Known fixed period |
-| **Cyclical** | C(t) | Business-cycle oscillations (no fixed period) | 2–10 years |
-| **Remainder** | R(t) | Random noise after removing all structure | — |
+| Component | Symbol | What It Captures | Typical Duration | Example |
+|-----------|--------|------------------|-----------------|----------------------|
+| **Trend** | T(t) | Long-run direction (up, down, flat). Long-term increase or decrease | Years to decades | Yearly growth in users |
+| **Seasonal** | S(t) | Regular, fixed-period calendar patterns (Repeating patterns at fixed frequency) | Known fixed period | Weekly sales spikes on weekends |
+| **Cyclical** | C(t) | Business-cycle oscillations (no fixed period) | 2–10 years | Business cycles |
+| **Remainder** | R(t) | Random noise after removing all structure (Random, unpredictable variation)| — | Noise / Irregular
 
 > **In practice**, classical decomposition treats T(t) and C(t) as a combined "trend-cycle" component, since they are difficult to separate without very long series.
 
@@ -46,6 +49,32 @@ Multiplicative model:
 ### 2.1 What Is Trend?
 
 The **trend** is the **long-run, systematic direction** of the series — reflecting underlying growth, decline, or stability over a long time window.
+
+![alt text](../Images/trends.png)
+
+#### Examples of Trends in Different Fields
+
+- **Economics & Finance**
+  - Stock Market: The general upward (or downward) movement of a stock's price over several years.
+  - Unemployment Rates: A long-term decline in unemployment rates during an economic expansion.
+
+- **Environment & Climate**
+  - Climate Change: The gradual increase in Earth's average temperature over decades.
+  - Population Growth: Increasing human or animal populations over generations (e.g., tiger populations).
+
+- **Business & Sales**
+  - Product Sales: A continuous rise in unit sales for a popular product due to market awareness.
+  - E-commerce Growth: The steady, long-term increase in online sales volume.
+
+- **Technology**
+  - Internet Usage: The exponential growth in internet users over time.
+  - Social Media: A new song becoming "trending" for a period before fading, showing a temporary trend.
+
+
+#### Characteristics
+- **Long-Term Movement**: Trends represent the slowest, most significant movement in data, lasting years or decades.
+- **Directional**: Can be upward (positive), downward (negative), or stationary (flat).
+- **Not Fixed Frequency**: Unlike seasonality, trends don't repeat at fixed intervals; they show persistent change.
 
 ### 2.2 Types of Trend
 
@@ -94,9 +123,36 @@ series_log_diff = np.log(series).diff().dropna()
 
 **Seasonality** is a **regular, repeating pattern** that occurs at a **known, fixed period** `s`.
 
+![alt text](../Images/seasonality.png)
+
 > Key property: the period is **exactly known and fixed**.
 > Monday is always after Sunday. January always follows December.
 > This is what distinguishes seasonality from cyclicality.
+
+#### Examples of Seasonality by Interval
+
+- **Yearly**
+  - Retail: High sales for gifts in December, increased demand for swimwear in summer.
+  - Tourism: More visitors to ski resorts in winter and beach destinations in summer.
+  - Agriculture: Sales peaking during harvest seasons.
+  - Health: Flu cases rising in winter.
+
+- **Weekly**
+  - Retail: Higher sales on weekends compared to weekdays.
+  - Traffic: Increased congestion during weekday rush hours (morning/evening).
+  - Call Centers: More calls during business hours, fewer at night.
+
+- **Daily**
+  - Energy Consumption: Peaks in electricity usage in the mornings and evenings as people wake up and return home.
+  - Retail: Higher foot traffic in stores during lunch and after work hours.
+
+
+#### Characteristics
+- **Predictable**: Patterns repeat at fixed, known intervals (e.g., every 12 months, every 7 days).
+- **Caused by External Factors**: Driven by seasons, calendars, weather, or social habits.
+- **Different from Cycles**: Unlike seasonality, cyclical patterns (like economic booms/busts) occur over irregular, longer periods.
+
+
 
 ### 3.2 Examples by Domain
 
@@ -178,6 +234,23 @@ series_deseasonalized = series - result.seasonal
 
 The **cyclical component** represents long-run oscillations **without a fixed, known period** — typically driven by economic or business cycles.
 
+![alt text](../Images/cyclicality.png)
+
+#### Examples of Cyclical Patterns
+
+- **Business Cycles**: Periods of economic growth (prosperity) followed by contraction (recession, depression) and recovery, occurring over several years with irregular timing (e.g., recessions in the 70s, 80s, 90s).
+- **Housing Market Cycles**: "Boom and bust" patterns in real estate, with long periods of rising prices followed by downturns.
+- **Commodity Prices**: Fluctuations in prices for oil, metals, or agricultural goods, influenced by supply, demand, and global events.
+- **Product Life Cycles**: Adoption and decline in demand for a specific product, influenced by trends and innovation.
+- **Fashion Trends**: Cycles of popularity for certain styles, often shorter but still irregular.
+
+
+
+#### Key Characteristics
+- **Variable Duration**: Unlike fixed seasonal patterns (e.g., yearly), cycle lengths (3–12 years for business cycles) are not precise.
+- **External Factors**: Driven by macro-economic forces, consumer confidence, or industry shifts.
+- **Combination with Other Patterns**: Can occur alongside trends (long-term direction) and seasonality (fixed-period patterns).
+
 ### 4.2 Seasonality vs. Cyclicality
 
 | Property | Seasonality | Cyclicality |
@@ -212,6 +285,19 @@ The **remainder** (also called residual, error, or irregular component) is what'
 Additive:        R(t) = Y(t) - T(t) - S(t)
 Multiplicative:  R(t) = Y(t) / (T(t) × S(t))
 ```
+
+![alt text](../Images/irregular.png)
+
+
+An irregularity in a time series means data points aren't collected at consistent intervals, like stock trades (happening constantly but unevenly) or event logs (e.g., sensor alerts only when thresholds are hit).
+
+- **Financial Markets**: Stock trades recorded at the millisecond, not every second.
+- **IoT/Sensors**: A smart meter sending data only when power usage spikes or a battery runs low.
+- **Healthcare**: Patient vitals recorded during a checkup or emergency, not every hour.
+- **Astronomy**: Observations dependent on weather, telescope time, and celestial alignment.
+- **Natural Disasters**: Earthquakes or floods occurring at unpredictable times.
+
+These irregular patterns differ from regular series (like daily temperatures) by having varying time gaps between data points, often requiring special handling for analysis.
 
 ### 5.2 Properties of a Good Remainder
 
@@ -301,6 +387,10 @@ result_mul.plot()
 
 ### 7.1 Definition
 
+A white noise series is one with a **zero mean,** a **constant variance**, and **no correlation** between its values at different times.
+
+![alt text](../Images/white-noise.png)
+
 A **white noise** process `{ε_t}` satisfies:
 
 ```
@@ -311,13 +401,36 @@ Cov[ε_t, ε_s]  = 0  for t ≠ s  (no autocorrelation)
 
 If `ε_t ~ N(0, σ²)` additionally, it is **Gaussian white noise**.
 
-### 7.2 Why It Matters
+An example of white noise in time series is the random fluctuation of stock market returns after accounting for trends/seasonality, or the unpredictable errors (residuals) from a fitted forecasting model, characterized by no patterns, zero autocorrelation, constant mean/variance, making it impossible to predict future values from past ones, like a TV static sound.
+
+![alt text](../Images/white-noise-forecasting.png)
+
+### 7.2 Key Characteristics
+- **Randomness**: No discernible pattern; past values don't predict future ones.
+- **Independence**: Observations are independent and identically distributed (i.i.d.).
+- **Stationary**: Constant mean (often zero) and constant variance over time.
+- **No Autocorrelation**: The correlation between a value and its lagged values is zero.
+
+#### Why It Matters?
 
 - White noise is **unpredictable** — no model can improve on forecasting its mean
 - Residuals of a good model should be white noise
 - If they are not, you have **unexploited structure** in the data
 
-### 7.3 Testing for White Noise
+### 7.3 Practical Examples
+- **Model Residuals**: After fitting a model (like ARIMA) to data (e.g., sales), the leftover errors (residuals) should ideally look like white noise, meaning the model captured all patterns.
+- **Simulated Data**: A sequence of random numbers drawn from a normal distribution with a mean of 0 and constant variance is a perfect Gaussian white noise example.
+- **Financial Data (After Transformation)**: Daily percentage changes (returns) in a stock price, once trends are removed, often approximate white noise, indicating price movements are unpredictable.
+
+
+
+### 7.4 How to Identify It
+- **Time Plot**: Shows scattered points around a constant mean with no visible patterns or trends.
+- **ACF Plot (Autocorrelation Function)**: Spikes should mostly fall within calculated confidence bands (e.g., ±2/√T), indicating no significant correlation at different lags.
+
+![alt text](../Images/white-noise-test.png)
+
+#### Testing for White Noise
 
 ```python
 # Visual: ACF plot — all bars inside the confidence band

@@ -43,6 +43,8 @@ This is a very strong condition — rarely assumed in practice.
 3.  Cov[Y(t), Y(t+k)] = γ(k)  (autocovariance depends only on lag k, not on time t)
 ```
 
+![alt text](../Images/stationarity.png)
+
 > This is what **"stationarity" means in practice**. When statisticians and ML engineers say a series is stationary, they mean weak stationarity.
 
 ### 1.3 Why Stationarity Matters
@@ -59,6 +61,8 @@ This is a very strong condition — rarely assumed in practice.
 ---
 
 ## 2. Types of Non-Stationarity
+
+![alt text](../Images/non-stationarity.png)
 
 | Type | Description | Example | Fix |
 |------|-------------|---------|-----|
@@ -87,6 +91,8 @@ A random walk **cannot be predicted** — the best forecast is the last observed
 ## 3. Visual Diagnosis
 
 **Always plot the series before running any test.**
+
+![alt text](../Images/stationarity-check.png)
 
 ```python
 import matplotlib.pyplot as plt
@@ -338,6 +344,8 @@ def stationarity_report(series):
 
 ### 7.1 Method 1 — First Differencing
 
+![alt text](../Images/differencing.png)
+
 Removes **linear trend** and **unit roots**.
 
 ```
@@ -364,6 +372,7 @@ series_seasonal_diff = series.diff(s).dropna()
 ```
 
 **When to use**: Series has a strong, stable seasonal pattern.
+
 
 ### 7.3 Method 3 — Log Transform
 
